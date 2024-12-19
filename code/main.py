@@ -103,6 +103,22 @@ def saveResult(master):
             messagebox.showinfo(None, "Error: " + str(e))
             return
 
+def saveFitResult(master):
+    global fit_result
+    if fit_result is None:
+        messagebox.showinfo(None, "No resulted data")
+        return;
+    fileName = filedialog.asksaveasfilename(filetypes=[('Tab-separated Files (*.tsv)', '*.tsv')])
+    if fileName is not None and fileName != "":
+        try:
+            filePath = pathlib.Path(fileName)
+            if filePath.suffix == "":
+                fileName += ".tsv"
+            fit_result.to_csv(fileName, index=False, sep='\t')
+        except Exception as e:
+            messagebox.showinfo(None, "Error: " + str(e))
+            return
+
 def doPlotData(master):
     global input_data
     if input_data is None:
@@ -205,7 +221,11 @@ def main():
     filemenu = Menu(menu, tearoff=False)
     menu.add_cascade(label='File', menu=filemenu)
     filemenu.add_command(label='Open Data File...', command=lambda: openFile(root))
-    filemenu.add_command(label='Save DCDFT Result...', command=lambda: saveResult(root))
+    #filemenu.add_command(label='Save DCDFT Result...', command=lambda: saveResult(root))
+    saveresult = Menu(menu, tearoff=False)
+    filemenu.add_cascade(label='Save Result...', menu=saveresult)
+    saveresult.add_command(label='DCDFT Result...', command=lambda: saveResult(root))
+    saveresult.add_command(label='Fit Result...', command=lambda: saveFitResult(root))
     filemenu.add_separator()
     filemenu.add_command(label='Exit', command=lambda: shutdown(root))
     

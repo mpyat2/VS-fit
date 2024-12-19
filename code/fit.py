@@ -1,17 +1,9 @@
 import numpy as np
 import statsmodels.api as sm
+#from statsmodels.stats.outliers_influence import summary_table
 import pandas as pd
 
 def polyfit(t, mag, parameters):
-    #ndata = len(t)
-
-    fit_time = []
-    fit_mag = []
-
-    min_t = min(t)
-    max_t = max(t)
-    #times = np.linspace(min(t), max(t), 1001)
-    
     fit_arguments = []
     # algebraic polynomial
     for i in range(parameters[0] + 1):
@@ -38,11 +30,23 @@ def polyfit(t, mag, parameters):
     #print(fit_arguments)
     #print(len(fit_arguments))
     mag_fit = sm.OLS(mag, np.column_stack(fit_arguments)).fit()
-    #print(mag_fit)
-    pred_ols = mag_fit.get_prediction()
+    #st, data, ss2 = summary_table(mag_fit, alpha=0.05)
+    #fittedvalues = data[:, 2]
+    #predict_mean_se  = data[:, 3]
+    #predict_mean_ci_low, predict_mean_ci_upp = data[:, 4:6].T
+    #predict_ci_low, predict_ci_upp = data[:, 6:8].T
+    #fit_result = pd.DataFrame({'Time': t, 
+    #                           'Mag': mag, 
+    #                           'Fit': fittedvalues,
+    #                           'Fit_L': predict_mean_ci_low,
+    #                           'Fit_U': predict_mean_ci_upp
+    #                           })
+
+    pred_ols = mag_fit.get_prediction()    
     fit_result = pd.DataFrame({'Time': t, 
                                'Mag': mag, 
                                'Fit': mag_fit.fittedvalues,
-                               'Fit_L': pred_ols.summary_frame()["obs_ci_lower"],
-                               'Fit_U': pred_ols.summary_frame()["obs_ci_upper"]})
+#                               'Fit_L': pred_ols.summary_frame()["obs_ci_lower"],
+#                               'Fit_U': pred_ols.summary_frame()["obs_ci_upper"]
+                              })
     return fit_result

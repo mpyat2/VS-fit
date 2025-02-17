@@ -8,27 +8,34 @@ def polyfit(t, mag, parameters):
     # algebraic polynomial
     for i in range(parameters[0] + 1):
         fit_arguments.append(t**i)
+        print("Trend degree ", i, " added")
     # 1-st trigonometric polynomial
     if parameters[1] > 0.0 and parameters[2] > 0:
-        for i in range(parameters[2] + 1):
+        for i in range(1, parameters[2] + 1):
             a = 2 * np.pi * i / parameters[1] * t
             fit_arguments.append(np.sin(a))
+            print("Poly degree1 sin ", i, " added")
             fit_arguments.append(np.cos(a))
+            print("Poly degree1 cos ", i, " added")
     # 2-nd trigonometric polynomial
     if parameters[3] > 0.0 and parameters[4] > 0:
-        for i in range(parameters[4] + 1):
+        for i in range(1, parameters[4] + 1):
             a = 2 * np.pi * i / parameters[3] * t
             fit_arguments.append(np.sin(a))
+            print("Poly degree2 sin ", i, " added")
             fit_arguments.append(np.cos(a))
+            print("Poly degree2 cos ", i, " added")
     # 3-rd trigonometric polynomial
     if parameters[5] > 0.0 and parameters[6] > 0:
-        for i in range(parameters[6] + 1):
+        for i in range(1, parameters[6] + 1):
             a = 2 * np.pi * i / parameters[5] * t
             fit_arguments.append(np.sin(a))
+            print("Poly degree3 sin ", i, " added")
             fit_arguments.append(np.cos(a))
+            print("Poly degree3 cos ", i, " added")
 
     #print(fit_arguments)
-    #print(len(fit_arguments))
+    print(len(fit_arguments))
     mag_fit = sm.OLS(mag, np.column_stack(fit_arguments)).fit()
     #st, data, ss2 = summary_table(mag_fit, alpha=0.05)
     #fittedvalues = data[:, 2]

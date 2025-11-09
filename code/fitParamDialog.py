@@ -1,36 +1,45 @@
-from tkinter import Toplevel, Frame, Label, Entry, Button, StringVar, messagebox
+from tkinter import Toplevel, Frame, Label, Entry, Button, Checkbutton, StringVar, IntVar, messagebox
 
 param_defined = False
 param_algeDegree = 0
 param_trig1Period = 0.0
 param_trig1Degree = 0
+param_trig1Optimize = 0
 param_trig2Period = 0.0
 param_trig2Degree = 0
+param_trig2Optimize = 0
 param_trig3Period = 0.0
 param_trig3Degree = 0
+param_trig3Optimize = 0
 
 def paramDialogDestroy(dialog):
     global param_defined
     param_defined = False
     dialog.destroy()
 
-def paramCheck(dialog, stringVars):
+def paramCheck(dialog, stringVars, optimize):
     global param_algeDegree
     global param_trig1Period
     global param_trig1Degree
+    global param_trig1Optimize
     global param_trig2Period
     global param_trig2Degree
+    global param_trig2Optimize
     global param_trig3Period
     global param_trig3Degree
+    global param_trig3Optimize
     global param_defined
     param_defined = False
     param_algeDegree = None
     param_trig1Period = None
     param_trig1Degree = None
+    param_trig1Optimize = 0
     param_trig2Period = None
     param_trig2Degree = None
+    param_trig2Optimize = 0
     param_trig3Period = None
     param_trig3Degree = None
+    param_trig3Optimize = 0
     
     algeDegree_s = stringVars[0].get()
     trig1Period_s = stringVars[1].get()
@@ -39,6 +48,9 @@ def paramCheck(dialog, stringVars):
     trig2Degree_s = stringVars[4].get()
     trig3Period_s = stringVars[5].get()
     trig3Degree_s = stringVars[6].get()
+    trig1Optimize = optimize[0].get()
+    trig2Optimize = optimize[1].get()
+    trig3Optimize = optimize[2].get()
     try:
         aD = int(eval(algeDegree_s, {}, {}))
         if aD < 0:
@@ -68,6 +80,9 @@ def paramCheck(dialog, stringVars):
         param_trig2Degree = t2D
         param_trig3Period = t3P
         param_trig3Degree = t3D
+        param_trig1Optimize = trig1Optimize
+        param_trig2Optimize = trig2Optimize
+        param_trig3Optimize = trig3Optimize
         param_defined = True
         dialog.destroy()
         return
@@ -82,15 +97,24 @@ def createEntry(frame, labelText, textvariable, initValue, r1, c1, r2, c2):
     entry.grid(row=r2, column=c2)
     return entry
 
+def createCheckBox(frame, intvariable, initValue, r1, c1):
+    checkbox = Checkbutton(frame, variable=intvariable)
+    checkbox.deselect() if initValue == 0 else checkbox.select()
+    checkbox.grid(row=r1, column=c1)
+    return checkbox
+
 def fitParameters(master):
     global param_defined
     global param_algeDegree
     global param_trig1Period
     global param_trig1Degree
+    global param_trig1Optimize
     global param_trig2Period
     global param_trig2Degree
+    global param_trig2Optimize
     global param_trig3Period
     global param_trig3Degree
+    global param_trig3Optimize
 
     param_defined = False
 
@@ -102,7 +126,7 @@ def fitParameters(master):
     paramDialog = Toplevel(master)
     paramDialog.protocol("WM_DELETE_WINDOW", lambda: paramDialogDestroy(paramDialog))
     paramDialog.title("Parameters")
-    paramDialog.geometry("500x200+" + str(x+20) + "+" + str(y+20))
+    paramDialog.geometry("640x200+" + str(x+20) + "+" + str(y+20))
 
     frame = Frame(paramDialog)
     frame.pack(pady=10)
@@ -110,29 +134,37 @@ def fitParameters(master):
     algeDegree = StringVar()
     trig1Period = StringVar()
     trig1Degree = StringVar()
+    trig1Optimize = IntVar()
     trig2Period = StringVar()
     trig2Degree = StringVar()
+    trig2Optimize = IntVar()
     trig3Period = StringVar()
     trig3Degree = StringVar()
+    trig3Optimize = IntVar()
 
     createEntry(frame, "Polynomial Degree", algeDegree, param_algeDegree, 0, 1, 0, 2)
-    createEntry(frame, "Trig. Polyn. Period, Degree 1", trig1Period, param_trig1Period, 1, 1, 1, 2)
-    createEntry(frame, ", ", trig1Degree, param_trig1Degree, 1, 3, 1, 4)
-    createEntry(frame, "Trig. Polyn. Period, Degree 2", trig2Period, param_trig2Period, 2, 1, 2, 2)
-    createEntry(frame, ", ", trig2Degree, param_trig2Degree, 2, 3, 2, 4)
-    createEntry(frame, "Trig. Polyn. Period, Degree 3", trig3Period, param_trig3Period, 3, 1, 3, 2)
-    createEntry(frame, ", ", trig3Degree, param_trig3Degree, 3, 3, 3, 4)
+    createEntry(frame, "Trig. Polyn. Period, Degree, Optimize 1", trig1Period, param_trig1Period, 1, 1, 1, 2)
+    createEntry(frame, "", trig1Degree, param_trig1Degree, 1, 3, 1, 4)
+    createCheckBox(frame, trig1Optimize, param_trig1Optimize, 1, 5)
+    createEntry(frame, "Trig. Polyn. Period, Degree, Optimize 2", trig2Period, param_trig2Period, 2, 1, 2, 2)
+    createEntry(frame, "", trig2Degree, param_trig2Degree, 2, 3, 2, 4)
+    createCheckBox(frame, trig2Optimize, param_trig2Optimize, 2, 5)
+    createEntry(frame, "Trig. Polyn. Period, Degree, Optimize 3", trig3Period, param_trig3Period, 3, 1, 3, 2)
+    createEntry(frame, "", trig3Degree, param_trig3Degree, 3, 3, 3, 4)
+    createCheckBox(frame, trig3Optimize, param_trig3Optimize, 3, 5)
 
     buttonOK = Button(frame, text="OK", 
                       command=lambda: paramCheck(paramDialog, 
                                                 [algeDegree, 
                                                  trig1Period, trig1Degree,
                                                  trig2Period, trig2Degree,
-                                                 trig3Period, trig3Degree,
-                                                 ]))
-    buttonOK.grid(row=4, column=1)
+                                                 trig3Period, trig3Degree],
+                                                [trig1Optimize, 
+                                                 trig2Optimize, 
+                                                 trig3Optimize]))
+    buttonOK.grid(row=5, column=1)
     buttonCancel = Button(frame, text="Cancel", command=lambda: paramDialogDestroy(paramDialog))
-    buttonCancel.grid(row=4, column=4)
+    buttonCancel.grid(row=5, column=4)
     paramDialog.transient(master)
     paramDialog.grab_set()
     paramDialog.focus_set()

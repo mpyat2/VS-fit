@@ -83,7 +83,7 @@ def numerical_jacobian_residuals(time, mag, base_params, period_indices, eps_rel
 # -------------------------
 # Outer optimizer with error estimates
 # -------------------------
-def optimize_periods_with_errors(time, mag, initial_parameters,
+def optimize_periods_with_errors(time, mag, initial_parameters, optimize,
                                  method='Nelder-Mead',
                                  maxiter=2000, xtol=1e-8, ftol=1e-8,
                                  compute_bootstrap=False, n_bootstrap=200):
@@ -238,8 +238,8 @@ def optimize_periods_with_errors(time, mag, initial_parameters,
 # -------------------------
 # Wrapper
 # -------------------------
-def polyfit(time, mag, initial_parameters, **kwargs):
-    out = optimize_periods_with_errors(time, mag, initial_parameters, **kwargs)
+def polyfit(time, mag, initial_parameters, optimize, **kwargs):
+    out = optimize_periods_with_errors(time, mag, initial_parameters, optimize, **kwargs)
     fit_result = pd.DataFrame({
         'Time': time,
         'Mag': mag,

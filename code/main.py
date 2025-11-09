@@ -67,8 +67,8 @@ def openFile(master):
     global input_data
     global dft_result
     fileName = filedialog.askopenfilename(filetypes=[('Data Files (*.dat *.txt *.csv *.tsv)', '*.dat *.txt *.csv *.tsv')])
-    #messagebox.showinfo(None, fileName)
-    if fileName is not None and fileName != "":
+    #print("Selected file: ", fileName);
+    if fileName:
         try:
             if plt.fignum_exists(2):
                 plt.figure(2).clear()
@@ -93,7 +93,8 @@ def saveResult(master):
         messagebox.showinfo(None, "No resulted data")
         return;
     fileName = filedialog.asksaveasfilename(filetypes=[('Tab-separated Files (*.tsv)', '*.tsv')])
-    if fileName is not None and fileName != "":
+    #print("Selected file: ", fileName);
+    if fileName:
         try:
             filePath = pathlib.Path(fileName)
             if filePath.suffix == "":
@@ -109,7 +110,7 @@ def saveFitResult(master):
         messagebox.showinfo(None, "No resulted data")
         return;
     fileName = filedialog.asksaveasfilename(filetypes=[('Tab-separated Files (*.tsv)', '*.tsv')])
-    if fileName is not None and fileName != "":
+    if fileName :
         try:
             filePath = pathlib.Path(fileName)
             if filePath.suffix == "":
@@ -199,7 +200,10 @@ def doPolyFit(master):
                                      fitParamDialog.param_trig2Period,
                                      fitParamDialog.param_trig2Degree,
                                      fitParamDialog.param_trig3Period,
-                                     fitParamDialog.param_trig3Degree])
+                                     fitParamDialog.param_trig3Degree],
+                                    [fitParamDialog.param_trig1Optimize,
+                                     fitParamDialog.param_trig2Optimize,
+                                     fitParamDialog.param_trig3Optimize])
             print('Calculation time ', time.time() - t0, 's')
         finally:
             master.config(cursor="")

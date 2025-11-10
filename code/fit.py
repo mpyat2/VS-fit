@@ -70,6 +70,20 @@ def numerical_jacobian_residuals(time, mag, alg_poly, b_periods, degrees, period
 
     return J, r0, X0, coeffs0, labels
 
+
+# Helper function
+def print_linear_coefficients(term_labels, coeffs, se_coeffs, rss, sigma2, dof):
+    print()
+    print("=== LINEAR COEFFICIENTS ========================================================")
+    for i, (lbl, c) in enumerate(zip(term_labels, coeffs)):
+        se = se_coeffs[i] if i < len(se_coeffs) else np.nan
+        print(f"{lbl:12s}: {c:.8e} ± {se:.3e}")
+    print("================================================================================")
+    print()
+    print(f"RSS = {rss:.6e}, sigma2 (residual variance) = {sigma2:.6e}, dof = {dof}\n")
+    print()
+
+
 # -------------------------
 # Outer optimizer with error estimates
 # -------------------------
@@ -83,10 +97,16 @@ def optimize_periods_with_errors(time, mag,
                                  compute_bootstrap=False, n_bootstrap=200):
     """
     Outer nonlinear optimization of periods (returns error estimates).
-
-    initial_parameters = list-like [deg_trend, p1, deg1, p2, deg2, p3, deg3]
-    Only periods with period>0 and deg>0 are included for optimization.
     """
+
+    # Initial periods
+    print()
+    print("=== INITIAL PERIODS ==========================================================")
+    for i, pval in enumerate(initial_periods):
+        period_name = f"period_index_{i}"
+        print(f"{period_name} = {pval:.8f}")
+    print("==============================================================================")
+    print()
 
     period_indices = []    
     # Periods to optimize
@@ -107,6 +127,7 @@ def optimize_periods_with_errors(time, mag,
         sigma2 = rss / dof
         cov_coeffs = sigma2 * np.linalg.inv(X.T @ X) if p > 0 else np.zeros((0,0))
         se_coeffs = np.sqrt(np.diag(cov_coeffs)) if p > 0 else np.array([])
+        print_linear_coefficients(term_labels, coeffs, se_coeffs, rss, sigma2, dof)
         return {
             'best_periods': initial_periods,
             'rss': rss, 
@@ -177,7 +198,8 @@ def optimize_periods_with_errors(time, mag,
         print("Warning: J^T J is singular — cannot compute period covariance via Gauss-Newton.")
 
     # Print results
-    print("\n=== OPTIMIZED PERIODS ===")
+    print()
+    print("=== OPTIMIZED PERIODS =======================================================")
     for local_i, global_idx in enumerate(period_indices):
         period_name = f"period_index_{global_idx}"  # maps to parameter slot 1,3,5
         pval = best_periods[global_idx]
@@ -185,15 +207,10 @@ def optimize_periods_with_errors(time, mag,
             print(f"{period_name} = {pval:.8f} ± {se_periods[local_i]:.8f} (1σ)")
         else:
             print(f"{period_name} = {pval:.8f} (no SE)")
-    print("=========================\n")
+    print("=============================================================================")
+    print()
 
-    # Print linear coeffs with errors
-    print("=== LINEAR COEFFICIENTS ===")
-    for i, (lbl, c) in enumerate(zip(term_labels, coeffs)):
-        se = se_coeffs[i] if i < len(se_coeffs) else np.nan
-        print(f"{lbl:12s}: {c:.8e} ± {se:.3e}")
-    print("===========================\n")
-    print(f"RSS = {rss:.6e}, sigma2 (residual variance) = {sigma2:.6e}, dof = {dof}\n")
+    print_linear_coefficients(term_labels, coeffs, se_coeffs, rss, sigma2, dof)
 
     output = {
         'best_periods': best_periods,

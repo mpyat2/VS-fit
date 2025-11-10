@@ -5,37 +5,27 @@ from scipy.optimize import minimize
 # -------------------------
 # Inner linear fit (with covariances)
 # -------------------------
-def polyfit_fixed_periods(time, mag, parameters, return_X=False):
-    """
-    Inner linear fit given fixed periods.
-    parameters = [deg_trend,
-                  period1, deg1,
-                  period2, deg2,
-                  period3, deg3]
-    Returns:
-      rss, fitted, coeffs, term_labels, X
-    """
+def polyfit_fixed_periods(time, mag, alg_poly, periods, degrees, return_X):
     t_mean = np.mean(time)
     temp_t = time - t_mean
     fit_arguments = []
     term_labels = []
 
     # Algebraic polynomial
-    for i in range(parameters[0] + 1):
+    for i in range(alg_poly + 1):
         fit_arguments.append(temp_t ** i)
         term_labels.append(f"poly_{i}")
 
     # Up to 3 trigonometric series
-    for j in range(3):
-        period = parameters[j * 2 + 1]
-        deg = int(parameters[j * 2 + 2])
-        if period > 0.0 and deg > 0:
-            for i in range(1, deg + 1):
-                a = 2 * np.pi * i / period * temp_t
-                fit_arguments.append(np.cos(a))
-                term_labels.append(f"cos_{j+1}_{i}")
-                fit_arguments.append(np.sin(a))
-                term_labels.append(f"sin_{j+1}_{i}")
+    for j in range(len(periods)):
+        period = periods[j]
+        degree = int(degrees[j])
+        for i in range(1, degree + 1):
+            a = 2 * np.pi * i / period * temp_t
+            fit_arguments.append(np.cos(a))
+            term_labels.append(f"cos_{j+1}_{i}")
+            fit_arguments.append(np.sin(a))
+            term_labels.append(f"sin_{j+1}_{i}")
 
     X = np.column_stack(fit_arguments) if len(fit_arguments) > 0 else np.zeros((len(time), 0))
 
@@ -53,27 +43,27 @@ def polyfit_fixed_periods(time, mag, parameters, return_X=False):
 # -------------------------
 # Utility: numerical Jacobian of residual vector wrt selected period variables
 # -------------------------
-def numerical_jacobian_residuals(time, mag, base_params, period_indices, eps_rel=1e-6):
+def numerical_jacobian_residuals(time, mag, alg_poly, b_periods, degrees, period_indices, eps_rel=1e-6):
     """
     Compute Jacobian J (N x k) of residual vector r = mag - X@beta
     w.r.t. the vector of period variables (period_indices list).
     Use finite differences on periods. eps_rel relative step.
     """
     # base residuals and fitted
-    rss0, fitted0, coeffs0, labels, X0 = polyfit_fixed_periods(time, mag, base_params, return_X=True)
+    rss0, fitted0, coeffs0, labels, X0 = polyfit_fixed_periods(time, mag, alg_poly, b_periods, degrees, True)
     r0 = mag - fitted0
     N = len(mag)
     k = len(period_indices)
     J = np.zeros((N, k), dtype=float)
 
     for col, idx in enumerate(period_indices):
-        p0 = base_params[idx]
+        p0 = b_periods[idx]
         # choose stepsize proportional to period
         h = max(abs(p0) * eps_rel, eps_rel)
-        params_pert = base_params.copy()
-        params_pert[idx] = p0 + h
+        periods_pert = b_periods.copy()
+        periods_pert[idx] = p0 + h
         # compute residuals at perturbed period
-        rss_p, fitted_p, _, _, Xp = polyfit_fixed_periods(time, mag, params_pert, return_X=True)
+        rss_p, fitted_p, _, _, Xp = polyfit_fixed_periods(time, mag, alg_poly, periods_pert, degrees, return_X=True)
         rp = mag - fitted_p
         # finite difference column
         J[:, col] = (rp - r0) / h
@@ -83,7 +73,11 @@ def numerical_jacobian_residuals(time, mag, base_params, period_indices, eps_rel
 # -------------------------
 # Outer optimizer with error estimates
 # -------------------------
-def optimize_periods_with_errors(time, mag, initial_parameters, optimize,
+def optimize_periods_with_errors(time, mag,
+                                 alg_poly,
+                                 initial_periods,
+                                 degrees,
+                                 optimize_flags,
                                  method='Nelder-Mead',
                                  maxiter=2000, xtol=1e-8, ftol=1e-8,
                                  compute_bootstrap=False, n_bootstrap=200):
@@ -94,18 +88,19 @@ def optimize_periods_with_errors(time, mag, initial_parameters, optimize,
     Only periods with period>0 and deg>0 are included for optimization.
     """
 
-    initial_parameters = list(initial_parameters)  # copy
-    # find indices of periods to optimize (1,3,5)
-    period_indices = []
-    for j in range(3):
-        period = initial_parameters[j * 2 + 1]
-        deg = int(initial_parameters[j * 2 + 2])
-        if period > 0.0 and deg > 0:
-            period_indices.append(j * 2 + 1)
+    period_indices = []    
+    # Periods to optimize
+    for i in range(len(optimize_flags)):
+        if optimize_flags[i]:
+            period_indices.append(i)
 
     if len(period_indices) == 0:
         # nothing to optimize -> just return linear fit results + cov
-        rss, fitted, coeffs, term_labels, X = polyfit_fixed_periods(time, mag, initial_parameters, return_X=True)
+        rss, fitted, coeffs, term_labels, X = polyfit_fixed_periods(time, mag, 
+                                                                    alg_poly, 
+                                                                    initial_periods, 
+                                                                    degrees, 
+                                                                    True)
         N = len(mag)
         p = len(coeffs)
         dof = max(N - p, 1)
@@ -113,21 +108,26 @@ def optimize_periods_with_errors(time, mag, initial_parameters, optimize,
         cov_coeffs = sigma2 * np.linalg.inv(X.T @ X) if p > 0 else np.zeros((0,0))
         se_coeffs = np.sqrt(np.diag(cov_coeffs)) if p > 0 else np.array([])
         return {
-            'best_params': initial_parameters,
-            'rss': rss, 'fitted': fitted, 'coeffs': coeffs, 'term_labels': term_labels,
-            'cov_coeffs': cov_coeffs, 'se_coeffs': se_coeffs,
-            'period_cov': None, 'se_periods': None
+            'best_periods': initial_periods,
+            'rss': rss, 
+            'fitted': fitted, 
+            'coeffs': coeffs, 
+            'term_labels': term_labels,
+            'cov_coeffs': cov_coeffs, 
+            'se_coeffs': se_coeffs,
+            'period_cov': None, 
+            'se_periods': None
         }
 
     # initial guess vector for the optimizer
-    x0 = np.array([initial_parameters[i] for i in period_indices], dtype=float)
+    x0 = np.array([initial_periods[i] for i in period_indices], dtype=float)
 
     def objective(period_values):
         # update param vector
-        params = initial_parameters.copy()
+        periods = initial_periods.copy()
         for idx, val in zip(period_indices, period_values):
-            params[idx] = float(val)
-        rss, _, _, _ = polyfit_fixed_periods(time, mag, params)
+            periods[idx] = float(val)
+        rss, _, _, _ = polyfit_fixed_periods(time, mag, alg_poly, periods, degrees, False)
         return rss
 
     # run optimizer
@@ -136,12 +136,16 @@ def optimize_periods_with_errors(time, mag, initial_parameters, optimize,
 
     best_period_values = result.x
     # assemble full parameter vector with best periods plugged
-    best_params = initial_parameters.copy()
+    best_periods = initial_periods.copy()
     for idx, val in zip(period_indices, best_period_values):
-        best_params[idx] = float(val)
+        best_periods[idx] = float(val)
 
     # final linear fit at best params (and get X, coeffs)
-    rss, fitted, coeffs, term_labels, X = polyfit_fixed_periods(time, mag, best_params, return_X=True)
+    rss, fitted, coeffs, term_labels, X = polyfit_fixed_periods(time, mag, 
+                                                                alg_poly,
+                                                                best_periods,
+                                                                degrees,
+                                                                True)
     N = len(mag)
     p_lin = len(coeffs)
     p_tot = p_lin + len(period_indices)
@@ -158,7 +162,7 @@ def optimize_periods_with_errors(time, mag, initial_parameters, optimize,
         se_coeffs = np.array([])
 
     # Now compute Jacobian J of residuals wrt periods (finite differences)
-    J, r0, X0, coeffs0, labels = numerical_jacobian_residuals(time, mag, best_params, period_indices)
+    J, r0, X0, coeffs0, labels = numerical_jacobian_residuals(time, mag, alg_poly, best_periods, degrees, period_indices)
 
     # Gauss-Newton approximation: Hessian ≈ 2 * J^T J, but covariance for periods:
     # Cov(periods) ≈ sigma2 * (J^T J)^{-1}
@@ -176,7 +180,7 @@ def optimize_periods_with_errors(time, mag, initial_parameters, optimize,
     print("\n=== OPTIMIZED PERIODS ===")
     for local_i, global_idx in enumerate(period_indices):
         period_name = f"period_index_{global_idx}"  # maps to parameter slot 1,3,5
-        pval = best_params[global_idx]
+        pval = best_periods[global_idx]
         if se_periods is not None:
             print(f"{period_name} = {pval:.8f} ± {se_periods[local_i]:.8f} (1σ)")
         else:
@@ -192,7 +196,7 @@ def optimize_periods_with_errors(time, mag, initial_parameters, optimize,
     print(f"RSS = {rss:.6e}, sigma2 (residual variance) = {sigma2:.6e}, dof = {dof}\n")
 
     output = {
-        'best_params': best_params,
+        'best_periods': best_periods,
         'rss': rss,
         'fitted': fitted,
         'coeffs': coeffs,
@@ -218,10 +222,10 @@ def optimize_periods_with_errors(time, mag, initial_parameters, optimize,
             mag_b = fitted + resampled_r
             # re-optimize periods starting from best_period_values (fast)
             def obj_bpv(period_values):
-                params_b = initial_parameters.copy()
+                periods_b = initial_periods.copy()
                 for idx, val in zip(period_indices, period_values):
-                    params_b[idx] = float(val)
-                rss_b, _, _, _ = polyfit_fixed_periods(time, mag_b, params_b)
+                    periods_b[idx] = float(val)
+                rss_b, _, _, _ = polyfit_fixed_periods(time, mag_b, alg_poly, periods_b, degrees, False)
                 return rss_b
             res_b = minimize(obj_bpv, best_period_values, method=method,
                              options={'maxiter': maxiter, 'xatol': xtol, 'fatol': ftol, 'disp': False})
@@ -238,8 +242,17 @@ def optimize_periods_with_errors(time, mag, initial_parameters, optimize,
 # -------------------------
 # Wrapper
 # -------------------------
-def polyfit(time, mag, initial_parameters, optimize, **kwargs):
-    out = optimize_periods_with_errors(time, mag, initial_parameters, optimize, **kwargs)
+def polyfit(time, mag, alg_poly, periods, degrees, optimize_flags, **kwargs):
+    normalized_periods = []
+    normalized_degrees = []
+    normalized_optimize_flags = []
+    for period, degree, optimize in zip(periods, degrees, optimize_flags):
+        if period > 0.0 and degree > 0:
+            normalized_periods.append(period)
+            normalized_degrees.append(degree)
+            normalized_optimize_flags.append(optimize)
+    
+    out = optimize_periods_with_errors(time, mag, alg_poly, normalized_periods, normalized_degrees, normalized_optimize_flags, **kwargs)
     fit_result = pd.DataFrame({
         'Time': time,
         'Mag': mag,

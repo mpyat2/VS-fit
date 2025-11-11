@@ -94,7 +94,7 @@ def optimize_periods_with_errors(time, mag,
                                  optimize_flags,
                                  method='Nelder-Mead',
                                  maxiter=2000, xtol=1e-8, ftol=1e-8,
-                                 compute_bootstrap=False, n_bootstrap=200):
+                                 compute_bootstrap=True, n_bootstrap=200):
     """
     Outer nonlinear optimization of periods (returns error estimates).
     """
@@ -201,7 +201,7 @@ def optimize_periods_with_errors(time, mag,
     print()
     print("=== OPTIMIZED PERIODS =======================================================")
     for local_i, global_idx in enumerate(period_indices):
-        period_name = f"period_index_{global_idx}"  # maps to parameter slot 1,3,5
+        period_name = f"period_index_{global_idx}"
         pval = best_periods[global_idx]
         if se_periods is not None:
             print(f"{period_name} = {pval:.8f} ± {se_periods[local_i]:.8f} (1σ)")
@@ -250,7 +250,7 @@ def optimize_periods_with_errors(time, mag,
         boot_periods = np.array(boot_periods)
         # compute bootstrap std dev for each optimized period
         boot_se = np.std(boot_periods, axis=0, ddof=1)
-        print("Bootstrap period 1..k standard errors:", boot_se)
+        print("Bootstrap periods standard errors:", boot_se)
         output['bootstrap_period_se'] = boot_se
         output['bootstrap_periods'] = boot_periods
 

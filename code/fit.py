@@ -129,15 +129,13 @@ def optimize_periods_with_errors(time, mag,
         se_coeffs = np.sqrt(np.diag(cov_coeffs)) if p > 0 else np.array([])
         print_linear_coefficients(term_labels, coeffs, se_coeffs, rss, sigma2, dof)
         return {
-            'best_periods': initial_periods,
-            'rss': rss, 
+            #'best_periods': initial_periods,
+            #'rss': rss, 
             'fitted': fitted, 
-            'coeffs': coeffs, 
-            'term_labels': term_labels,
-            'cov_coeffs': cov_coeffs, 
-            'se_coeffs': se_coeffs,
-            'period_cov': None, 
-            'se_periods': None
+            #'coeffs': coeffs, 
+            #'term_labels': term_labels,
+            #'cov_coeffs': cov_coeffs, 
+            #'se_coeffs': se_coeffs,
         }
 
     # initial guess vector for the optimizer
@@ -213,18 +211,18 @@ def optimize_periods_with_errors(time, mag,
     print_linear_coefficients(term_labels, coeffs, se_coeffs, rss, sigma2, dof)
 
     output = {
-        'best_periods': best_periods,
-        'rss': rss,
+        #'best_periods': best_periods,
+        #'rss': rss,
         'fitted': fitted,
-        'coeffs': coeffs,
-        'term_labels': term_labels,
-        'cov_coeffs': cov_coeffs,
-        'se_coeffs': se_coeffs,
-        'cov_periods': cov_periods,
-        'se_periods': se_periods,
-        'period_indices': period_indices,
-        'J': J,
-        'result': result
+        #'coeffs': coeffs,
+        #'term_labels': term_labels,
+        #'cov_coeffs': cov_coeffs,
+        #'se_coeffs': se_coeffs,
+        #'cov_periods': cov_periods,
+        #'se_periods': se_periods,
+        #'period_indices': period_indices,
+        #'J': J,
+        #'result': result
     }
 
     # Optional: bootstrap for period uncertainties (more robust)
@@ -244,6 +242,7 @@ def optimize_periods_with_errors(time, mag,
                     periods_b[idx] = float(val)
                 rss_b, _, _, _ = polyfit_fixed_periods(time, mag_b, alg_poly, periods_b, degrees, False)
                 return rss_b
+            #
             res_b = minimize(obj_bpv, best_period_values, method=method,
                              options={'maxiter': maxiter, 'xatol': xtol, 'fatol': ftol, 'disp': False})
             boot_periods.append(res_b.x)

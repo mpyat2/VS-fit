@@ -1,3 +1,4 @@
+import sys
 from tkinter import Tk, Menu, mainloop, filedialog, messagebox
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -29,8 +30,9 @@ def plotData():
     plt.ylim(max(input_data['Mag']), min(input_data['Mag']))
     plt.title('Input')
     plt.show()
+    plt.pause(0.001)  # Forces redraw: needed in Spyder
 
-def plotResult(plot_power):
+def plotDftResult(plot_power):
     fig = plt.figure(1)
     fig.clear()
     global dft_result
@@ -45,6 +47,7 @@ def plotResult(plot_power):
     #plt.tick_params(axis='both', which='major', labelsize=15)
     plt.title('DCDFT')
     plt.show()
+    plt.pause(0.001)  # Forces redraw: needed in Spyder
 
 def plotFitResult():
     fig = plt.figure(2)
@@ -62,6 +65,7 @@ def plotFitResult():
     #plt.tick_params(axis='both', which='major', labelsize=15)
     plt.title('Approximation')
     plt.show()
+    plt.pause(0.001)  # Forces redraw: needed in Spyder
 
 def openFile(master):
     global input_data
@@ -134,11 +138,11 @@ def doPlotFolded(master):
         return;
     phasePlot.plotFolded(master, input_data)
 
-def doPlotResult(master, plot_power):
+def doPlotDftResult(master, plot_power):
     if dft_result is None:
         messagebox.showinfo(None, "No resulted data")
         return;
-    plotResult(plot_power)
+    plotDftResult(plot_power)
 
 def doDCDFT(master):
     global input_data
@@ -171,7 +175,7 @@ def doDCDFT(master):
     except Exception as e:
         messagebox.showinfo(None, "Error: " + str(e))
         return
-    plotResult(True)
+    plotDftResult(True)
 
 def doPolyFit(master):
     global input_data
@@ -213,9 +217,17 @@ def doPolyFit(master):
     plotFitResult()
 
 
+# Ensure the 'root' at the top
+def bring_to_front(root):
+    root.lift()
+    root.attributes('-topmost', True)
+    root.after(100, lambda: root.attributes('-topmost', False))
+
 ##############################################################################
 
 def main():
+    print("App started")
+    print()
     root = Tk()
     root.protocol("WM_DELETE_WINDOW", lambda: shutdown(root))
     root.title("V*-mini")
@@ -241,8 +253,8 @@ def main():
     viewmenuInput.add_command(label='Phase', command=lambda: doPlotFolded(root))
     viewmenuResult = Menu(menu, tearoff=False)
     viewmenu.add_cascade(label='Plot DFT Result', menu=viewmenuResult)
-    viewmenuResult.add_command(label='Power', command=lambda: doPlotResult(root, True))
-    viewmenuResult.add_command(label='Semi-amplitude', command=lambda: doPlotResult(root, False))
+    viewmenuResult.add_command(label='Power', command=lambda: doPlotDftResult(root, True))
+    viewmenuResult.add_command(label='Semi-amplitude', command=lambda: doPlotDftResult(root, False))
 
     operationmenu = Menu(menu, tearoff=False)
     menu.add_cascade(label='Operations', menu=operationmenu)
@@ -251,8 +263,19 @@ def main():
 
     root.geometry("320x100+100+100")
 
+    bring_to_front(root)
+    
     mainloop()
 
 ##############################################################################
 
-main()
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        print(f"Fatal Error: {e}")
+    finally:
+        print()
+        #input("Press ENTER to continue: ")
+        print("END")        
+        sys.exit()

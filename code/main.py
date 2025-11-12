@@ -1,5 +1,6 @@
 import sys
 from tkinter import Tk, Menu, mainloop, filedialog, messagebox
+from log_window import LogWindow
 import matplotlib.pyplot as plt
 import pandas as pd
 import pathlib
@@ -17,6 +18,7 @@ DTYPE = {'Time': 'float64', 'Mag': 'float64'}
 input_data = None
 dft_result = None
 fit_result = None
+log_window = None
 
 def shutdown(master):
     plt.close('all')
@@ -87,6 +89,7 @@ def openFile(master):
             input_data = None
             messagebox.showinfo(None, "Error: " + str(e))
             return
+        log_window.add_line(f"{fileName} loaded.")
         plotData()
     else:
         input_data = None
@@ -159,6 +162,7 @@ def doDCDFT(master):
     dft_result = None
     t = input_data['Time'].to_numpy()
     m = input_data['Mag'].to_numpy()
+    log_window.add_line("DCDFT started.")
     try:
         master.config(cursor="watch")
         master.update()
@@ -169,7 +173,9 @@ def doDCDFT(master):
                                    hifreq=dftParamDialog.param_hifreq, 
                                    n_freq=dftParamDialog.param_n_intervals, 
                                    mcv_mode=False)
-            print('Calculation time ', time.time() - t0, 's')
+            msg = f"DCDFT calculation time {(time.time() - t0):.2f} s"
+            print(msg)
+            log_window.add_line(msg)
         finally:
             master.config(cursor="")
     except Exception as e:
@@ -192,6 +198,7 @@ def doPolyFit(master):
     fit_result = None
     t = input_data['Time'].to_numpy()
     m = input_data['Mag'].to_numpy()
+    log_window.add_line("PolyFit started.")
     try:
         master.config(cursor="watch")
         master.update()
@@ -208,7 +215,9 @@ def doPolyFit(master):
                                     [fitParamDialog.param_trig1Optimize,
                                      fitParamDialog.param_trig2Optimize,
                                      fitParamDialog.param_trig3Optimize])
-            print('Calculation time ', time.time() - t0, 's')
+            msg = f"DCDFT calculation time {(time.time() - t0):.2f} s"
+            print(msg)
+            log_window.add_line(msg)
         finally:
             master.config(cursor="")
     except Exception as e:
@@ -222,6 +231,9 @@ def bring_to_front(root):
     root.lift()
     root.attributes('-topmost', True)
     root.after(100, lambda: root.attributes('-topmost', False))
+
+def clear_log(root):
+    log_window.clear()
 
 ##############################################################################
 
@@ -237,7 +249,6 @@ def main():
     filemenu = Menu(menu, tearoff=False)
     menu.add_cascade(label='File', menu=filemenu)
     filemenu.add_command(label='Open Data File...', command=lambda: openFile(root))
-    #filemenu.add_command(label='Save DCDFT Result...', command=lambda: saveResult(root))
     saveresult = Menu(menu, tearoff=False)
     filemenu.add_cascade(label='Save Result...', menu=saveresult)
     saveresult.add_command(label='DCDFT Result...', command=lambda: saveResult(root))
@@ -255,6 +266,8 @@ def main():
     viewmenu.add_cascade(label='Plot DFT Result', menu=viewmenuResult)
     viewmenuResult.add_command(label='Power', command=lambda: doPlotDftResult(root, True))
     viewmenuResult.add_command(label='Semi-amplitude', command=lambda: doPlotDftResult(root, False))
+    viewmenu.add_separator()
+    viewmenu.add_command(label='Clear log', command=lambda: clear_log(root))
 
     operationmenu = Menu(menu, tearoff=False)
     menu.add_cascade(label='Operations', menu=operationmenu)
@@ -265,7 +278,10 @@ def main():
 
     bring_to_front(root)
     
-    mainloop()
+    global log_window
+    log_window = LogWindow(root)
+    
+    root.mainloop()
 
 ##############################################################################
 

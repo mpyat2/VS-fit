@@ -94,7 +94,7 @@ def optimize_periods_with_errors(time, mag,
                                  optimize_flags,
                                  method='Nelder-Mead',
                                  maxiter=2000, xtol=1e-8, ftol=1e-8,
-                                 compute_bootstrap=True, n_bootstrap=200):
+                                 compute_bootstrap=False, n_bootstrap=200):
     """
     Outer nonlinear optimization of periods (returns error estimates).
     """
@@ -268,7 +268,12 @@ def polyfit(time, mag, alg_poly, periods, degrees, optimize_flags, **kwargs):
             normalized_degrees.append(degree)
             normalized_optimize_flags.append(optimize)
     
-    out = optimize_periods_with_errors(time, mag, alg_poly, normalized_periods, normalized_degrees, normalized_optimize_flags, **kwargs)
+    out = optimize_periods_with_errors(time, mag, 
+                                       alg_poly, 
+                                       normalized_periods, 
+                                       normalized_degrees, 
+                                       normalized_optimize_flags,
+                                       **kwargs)
     fit_result = pd.DataFrame({
         'Time': time,
         'Mag': mag,

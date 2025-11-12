@@ -11,13 +11,14 @@ param_trig2Optimize = 0
 param_trig3Period = 0.0
 param_trig3Degree = 0
 param_trig3Optimize = 0
+param_bootstrapForErrors = 0
 
 def paramDialogDestroy(dialog):
     global param_defined
     param_defined = False
     dialog.destroy()
 
-def paramCheck(dialog, stringVars, optimize):
+def paramCheck(dialog, stringVars, optimize, bootstrapErr):
     global param_algeDegree
     global param_trig1Period
     global param_trig1Degree
@@ -28,6 +29,7 @@ def paramCheck(dialog, stringVars, optimize):
     global param_trig3Period
     global param_trig3Degree
     global param_trig3Optimize
+    global param_bootstrapForErrors
     global param_defined
     param_defined = False
     param_algeDegree = None
@@ -40,6 +42,7 @@ def paramCheck(dialog, stringVars, optimize):
     param_trig3Period = None
     param_trig3Degree = None
     param_trig3Optimize = 0
+    param_bootstrapForErrors = 0
     
     algeDegree_s = stringVars[0].get()
     trig1Period_s = stringVars[1].get()
@@ -51,6 +54,7 @@ def paramCheck(dialog, stringVars, optimize):
     trig1Optimize = optimize[0].get()
     trig2Optimize = optimize[1].get()
     trig3Optimize = optimize[2].get()
+    bootstrapForErrors = bootstrapErr.get()
     try:
         aD = int(eval(algeDegree_s, {}, {}))
         if aD < 0:
@@ -83,6 +87,7 @@ def paramCheck(dialog, stringVars, optimize):
         param_trig1Optimize = trig1Optimize
         param_trig2Optimize = trig2Optimize
         param_trig3Optimize = trig3Optimize
+        param_bootstrapForErrors = bootstrapForErrors
         param_defined = True
         dialog.destroy()
         return
@@ -115,6 +120,7 @@ def fitParameters(master):
     global param_trig3Period
     global param_trig3Degree
     global param_trig3Optimize
+    global param_bootstrapForErrors
 
     param_defined = False
 
@@ -141,6 +147,7 @@ def fitParameters(master):
     trig3Period = StringVar()
     trig3Degree = StringVar()
     trig3Optimize = IntVar()
+    bootstrapErr = IntVar()
 
     createEntry(frame, "Polynomial Degree", algeDegree, param_algeDegree, 0, 1, 0, 2)
     createEntry(frame, "Trig. Polyn. Period, Degree, Optimize 1", trig1Period, param_trig1Period, 1, 1, 1, 2)
@@ -152,6 +159,8 @@ def fitParameters(master):
     createEntry(frame, "Trig. Polyn. Period, Degree, Optimize 3", trig3Period, param_trig3Period, 3, 1, 3, 2)
     createEntry(frame, "", trig3Degree, param_trig3Degree, 3, 3, 3, 4)
     createCheckBox(frame, trig3Optimize, param_trig3Optimize, 3, 5)
+    Label(frame, text="Calculate period errors via bootstrap").grid(row=4, column=4)
+    createCheckBox(frame, bootstrapErr, param_bootstrapForErrors, 4, 5)
 
     buttonOK = Button(frame, text="OK", 
                       command=lambda: paramCheck(paramDialog, 
@@ -161,7 +170,8 @@ def fitParameters(master):
                                                  trig3Period, trig3Degree],
                                                 [trig1Optimize, 
                                                  trig2Optimize, 
-                                                 trig3Optimize]))
+                                                 trig3Optimize],
+                                                 bootstrapErr))
     buttonOK.grid(row=5, column=1)
     buttonCancel = Button(frame, text="Cancel", command=lambda: paramDialogDestroy(paramDialog))
     buttonCancel.grid(row=5, column=4)

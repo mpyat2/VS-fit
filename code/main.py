@@ -214,8 +214,9 @@ def doPolyFit(master):
                                      fitParamDialog.param_trig3Degree],
                                     [fitParamDialog.param_trig1Optimize,
                                      fitParamDialog.param_trig2Optimize,
-                                     fitParamDialog.param_trig3Optimize])
-            msg = f"DCDFT calculation time {(time.time() - t0):.2f} s"
+                                     fitParamDialog.param_trig3Optimize],
+                                     compute_bootstrap=fitParamDialog.param_bootstrapForErrors)
+            msg = f"PolyFit calculation time {(time.time() - t0):.2f} s"
             print(msg)
             log_window.add_line(msg)
         finally:

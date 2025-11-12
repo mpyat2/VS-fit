@@ -71,19 +71,6 @@ def numerical_jacobian_residuals(time, mag, alg_poly, b_periods, degrees, period
     return J, r0, X0, coeffs0, labels
 
 
-# Helper function
-def print_linear_coefficients(term_labels, coeffs, se_coeffs, rss, sigma2, dof):
-    print()
-    print("=== LINEAR COEFFICIENTS ========================================================")
-    for i, (lbl, c) in enumerate(zip(term_labels, coeffs)):
-        se = se_coeffs[i] if i < len(se_coeffs) else np.nan
-        print(f"{lbl:12s}: {c:.8e} ± {se:.3e}")
-    print("================================================================================")
-    print()
-    print(f"RSS = {rss:.6e}, sigma2 (residual variance) = {sigma2:.6e}, dof = {dof}\n")
-    print()
-
-
 # -------------------------
 # Outer optimizer with error estimates
 # -------------------------
@@ -99,14 +86,33 @@ def optimize_periods_with_errors(time, mag,
     Outer nonlinear optimization of periods (returns error estimates).
     """
 
+    log_message = ""
+    
+    def printLog(msg=""):
+        print(msg)
+        nonlocal log_message
+        log_message += f"{msg}\n"
+
+
+    def print_linear_coefficients(term_labels, coeffs, se_coeffs, rss, sigma2, dof):
+        printLog()
+        printLog("=== LINEAR COEFFICIENTS ========================================================")
+        for i, (lbl, c) in enumerate(zip(term_labels, coeffs)):
+            se = se_coeffs[i] if i < len(se_coeffs) else np.nan
+            printLog(f"{lbl:12s}: {c:.8e} ± {se:.3e}")
+        printLog("================================================================================")
+        printLog()
+        printLog(f"RSS = {rss:.6e}, sigma2 (residual variance) = {sigma2:.6e}, dof = {dof}\n")
+        printLog()
+    
     # Initial periods
-    print()
-    print("=== INITIAL PERIODS ==========================================================")
+    printLog()
+    printLog("=== INITIAL PERIODS ==========================================================")
     for i, pval in enumerate(initial_periods):
         period_name = f"period_index_{i}"
-        print(f"{period_name} = {pval:.8f}")
-    print("==============================================================================")
-    print()
+        printLog(f"{period_name} = {pval:.8f}")
+    printLog("==============================================================================")
+    printLog()
 
     period_indices = []    
     # Periods to optimize
@@ -136,6 +142,7 @@ def optimize_periods_with_errors(time, mag,
             #'term_labels': term_labels,
             #'cov_coeffs': cov_coeffs, 
             #'se_coeffs': se_coeffs,
+            'message': log_message
         }
 
     # initial guess vector for the optimizer
@@ -193,20 +200,20 @@ def optimize_periods_with_errors(time, mag,
     except np.linalg.LinAlgError:
         cov_periods = None
         se_periods = None
-        print("Warning: J^T J is singular — cannot compute period covariance via Gauss-Newton.")
+        printLog("Warning: J^T J is singular — cannot compute period covariance via Gauss-Newton.")
 
     # Print results
-    print()
-    print("=== OPTIMIZED PERIODS =======================================================")
+    printLog()
+    printLog("=== OPTIMIZED PERIODS =======================================================")
     for local_i, global_idx in enumerate(period_indices):
         period_name = f"period_index_{global_idx}"
         pval = best_periods[global_idx]
         if se_periods is not None:
-            print(f"{period_name} = {pval:.8f} ± {se_periods[local_i]:.8f} (1σ)")
+            printLog(f"{period_name} = {pval:.8f} ± {se_periods[local_i]:.8f} (1σ)")
         else:
-            print(f"{period_name} = {pval:.8f} (no SE)")
-    print("=============================================================================")
-    print()
+            printLog(f"{period_name} = {pval:.8f} (no SE)")
+    printLog("=============================================================================")
+    printLog()
 
     print_linear_coefficients(term_labels, coeffs, se_coeffs, rss, sigma2, dof)
 
@@ -223,11 +230,13 @@ def optimize_periods_with_errors(time, mag,
         #'period_indices': period_indices,
         #'J': J,
         #'result': result
+        'message': log_message
     }
 
     # Optional: bootstrap for period uncertainties (more robust)
     if compute_bootstrap:
-        print("Running bootstrap (this may take a while)...")
+        printLog("Running bootstrap...")
+        print("(this may take a while)...")
         boot_periods = []
         rng = np.random.default_rng()
         for b in range(n_bootstrap):
@@ -249,9 +258,10 @@ def optimize_periods_with_errors(time, mag,
         boot_periods = np.array(boot_periods)
         # compute bootstrap std dev for each optimized period
         boot_se = np.std(boot_periods, axis=0, ddof=1)
-        print("Bootstrap periods standard errors:", boot_se)
-        output['bootstrap_period_se'] = boot_se
-        output['bootstrap_periods'] = boot_periods
+        printLog(f"Bootstrap periods standard errors: {boot_se}")
+        #output['bootstrap_period_se'] = boot_se
+        #output['bootstrap_periods'] = boot_periods
+        output['message'] = log_message
 
     return output
 
@@ -279,4 +289,4 @@ def polyfit(time, mag, alg_poly, periods, degrees, optimize_flags, **kwargs):
         'Mag': mag,
         'Fit': out['fitted'],
     })
-    return fit_result
+    return {'fit_result': fit_result, 'message': out['message']}

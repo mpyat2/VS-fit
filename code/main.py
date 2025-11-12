@@ -1,5 +1,5 @@
 import sys
-from tkinter import Tk, Menu, mainloop, filedialog, messagebox
+from tkinter import Tk, Menu, filedialog, messagebox
 from log_window import LogWindow
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -84,7 +84,10 @@ def openFile(master):
                 plt.figure(0).clear()
             dft_result = None
             input_data = None
-            input_data = pd.read_csv(fileName, names=NAMES, dtype=DTYPE, sep='\t', header=None, usecols=[0, 1])
+            input_data = pd.read_csv(fileName, 
+                                     comment='#', skip_blank_lines=True,
+                                     names=NAMES, dtype=DTYPE, header=None, usecols=[0, 1],
+                                     sep=r'\s+', engine='python')
         except Exception as e:
             input_data = None
             messagebox.showinfo(None, "Error: " + str(e))
@@ -94,7 +97,16 @@ def openFile(master):
     else:
         input_data = None
 
-def saveResult(master):
+def save_result(fileName, data):
+    filePath = pathlib.Path(fileName)
+    if filePath.suffix == "":
+        fileName += ".tsv"
+    with open(fileName, 'w') as f:
+        # write header line with '#'
+        f.write('#' + '\t'.join(data.columns) + '\n')
+        data.to_csv(f, index=False, header=False, sep='\t')        
+
+def saveDftResult(master):
     global dft_result
     if dft_result is None:
         messagebox.showinfo(None, "No resulted data")
@@ -103,10 +115,7 @@ def saveResult(master):
     #print("Selected file: ", fileName);
     if fileName:
         try:
-            filePath = pathlib.Path(fileName)
-            if filePath.suffix == "":
-                fileName += ".tsv"
-            dft_result.to_csv(fileName, index=False, sep='\t')
+            save_result(fileName, dft_result)
         except Exception as e:
             messagebox.showinfo(None, "Error: " + str(e))
             return
@@ -119,10 +128,7 @@ def saveFitResult(master):
     fileName = filedialog.asksaveasfilename(filetypes=[('Tab-separated Files (*.tsv)', '*.tsv')])
     if fileName :
         try:
-            filePath = pathlib.Path(fileName)
-            if filePath.suffix == "":
-                fileName += ".tsv"
-            fit_result.to_csv(fileName, index=False, sep='\t')
+            save_result(fileName, fit_result)
         except Exception as e:
             messagebox.showinfo(None, "Error: " + str(e))
             return
@@ -204,21 +210,24 @@ def doPolyFit(master):
         master.update()
         try:
             t0 = time.time()
-            fit_result = fit.polyfit(t, m,
-                                     fitParamDialog.param_algeDegree,
-                                    [fitParamDialog.param_trig1Period,
-                                     fitParamDialog.param_trig2Period,
-                                     fitParamDialog.param_trig3Period],
-                                    [fitParamDialog.param_trig1Degree,                                     
-                                     fitParamDialog.param_trig2Degree,
-                                     fitParamDialog.param_trig3Degree],
-                                    [fitParamDialog.param_trig1Optimize,
-                                     fitParamDialog.param_trig2Optimize,
-                                     fitParamDialog.param_trig3Optimize],
-                                     compute_bootstrap=fitParamDialog.param_bootstrapForErrors)
+            out = fit.polyfit(t, m,
+                              fitParamDialog.param_algeDegree,
+                              [fitParamDialog.param_trig1Period,
+                               fitParamDialog.param_trig2Period,
+                               fitParamDialog.param_trig3Period],
+                              [fitParamDialog.param_trig1Degree,                                     
+                               fitParamDialog.param_trig2Degree,
+                               fitParamDialog.param_trig3Degree],
+                              [fitParamDialog.param_trig1Optimize,
+                               fitParamDialog.param_trig2Optimize,
+                               fitParamDialog.param_trig3Optimize],
+                              compute_bootstrap=fitParamDialog.param_bootstrapForErrors)
+            fit_result = out['fit_result']
             msg = f"PolyFit calculation time {(time.time() - t0):.2f} s"
             print(msg)
             log_window.add_line(msg)
+            log_window.add_line(out['message'])
+            
         finally:
             master.config(cursor="")
     except Exception as e:
@@ -252,7 +261,7 @@ def main():
     filemenu.add_command(label='Open Data File...', command=lambda: openFile(root))
     saveresult = Menu(menu, tearoff=False)
     filemenu.add_cascade(label='Save Result...', menu=saveresult)
-    saveresult.add_command(label='DCDFT Result...', command=lambda: saveResult(root))
+    saveresult.add_command(label='DCDFT Result...', command=lambda: saveDftResult(root))
     saveresult.add_command(label='Fit Result...', command=lambda: saveFitResult(root))
     filemenu.add_separator()
     filemenu.add_command(label='Exit', command=lambda: shutdown(root))
@@ -275,12 +284,12 @@ def main():
     operationmenu.add_command(label='DCDFT (Ferraz-Mello)', command=lambda: doDCDFT(root))
     operationmenu.add_command(label='Polynomial Fit', command=lambda: doPolyFit(root))
 
-    root.geometry("320x100+100+100")
+    root.geometry("320x100+40+40")
 
     bring_to_front(root)
     
     global log_window
-    log_window = LogWindow(root)
+    log_window = LogWindow(root, geometry="600x300+440+40")
     
     root.mainloop()
 

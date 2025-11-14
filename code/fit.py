@@ -6,8 +6,13 @@ from scipy.optimize import minimize
 # Inner linear fit (with covariances)
 # -------------------------
 def polyfit_fixed_periods(time, mag, alg_poly, periods, degrees, return_X):
+    # Centering and scaling time
     t_mean = np.mean(time)
-    temp_t = time - t_mean
+    #temp_t = time - t_mean
+    t_scale = np.max(np.abs(time - t_mean))
+    #t_scale = 1.0
+    temp_t = (time - t_mean) / t_scale # now |temp_t| <= 1
+    
     fit_arguments = []
 
     # Algebraic polynomial
@@ -16,7 +21,7 @@ def polyfit_fixed_periods(time, mag, alg_poly, periods, degrees, return_X):
 
     # Trigonometric part
     for j in range(len(periods)):
-        period = periods[j]
+        period = periods[j] / t_scale
         degree = int(degrees[j])
         for i in range(1, degree + 1):
             a = 2 * np.pi * i / period * temp_t
@@ -30,6 +35,15 @@ def polyfit_fixed_periods(time, mag, alg_poly, periods, degrees, return_X):
     fitted = X @ coeffs
     residuals = mag - fitted
     rss = np.sum(residuals**2)
+
+    # Transform coefficients back
+    # Algebraic polynomial
+    for i in range(alg_poly + 1):
+        coeffs[i] = coeffs[i] / (t_scale ** i)
+        
+    if return_X:
+        for i in range(alg_poly + 1):
+            X[:,i] = X[:,i] * (t_scale ** i)
 
     if return_X:
         return rss, fitted, coeffs, X
@@ -72,6 +86,8 @@ def numerical_jacobian_residuals(time, mag, alg_poly, b_periods, degrees, period
 def print_initial_periods(printLog, init_periods):
     # Initial periods
     printLog()
+    if len(init_periods) < 1:
+        return
     printLog("=== INITIAL PERIODS ==========================================================")
     for i, pval in enumerate(init_periods):
         period_name = f"period_{i+1}"
@@ -81,6 +97,8 @@ def print_initial_periods(printLog, init_periods):
     
 def print_optimized_periods(printLog, best_periods, se_periods, period_indices):
     printLog()
+    if len(period_indices) < 1:
+        return
     printLog("=== OPTIMIZED PERIODS =======================================================")
     for i, ii in enumerate(period_indices):
         period_name = f"period_{ii+1}"
@@ -92,7 +110,10 @@ def print_optimized_periods(printLog, best_periods, se_periods, period_indices):
     printLog("=============================================================================")
     printLog()
     
-def print_linear_coefficients_and_amplitudes(printLog, N, X, alg_poly, coeffs, rss, sigma2, dof):
+def print_linear_coefficients_and_amplitudes(printLog, N, X, alg_poly, 
+                                             initial_periods, degrees, 
+                                             best_periods, best_period_indices, 
+                                             coeffs, rss, sigma2, dof):
     # Errors of coefficients
     cov_coeffs = sigma2 * np.linalg.inv(X.T @ X)
     se_coeffs = np.sqrt(np.diag(cov_coeffs))
@@ -130,13 +151,26 @@ def print_linear_coefficients_and_amplitudes(printLog, N, X, alg_poly, coeffs, r
         printLog(f"{lbl:12s}: {c:.8e} ± {se:.3e}")
     printLog("================================================================================")                        
     printLog()
-    printLog("=== AMPLITUDES =================================================================")
-    for lbl, a, se in zip(ampl_labels, amplitudes, se_amplitudes):
-        printLog(f"{lbl:12s}: {a:.8e} ± {se:.3e}")
-    printLog("================================================================================")            
-    printLog()
+    if len(initial_periods) > 0:
+        period_infos = []
+        for j in range(len(initial_periods)):
+            period = initial_periods[j]
+            if j in best_period_indices:
+                period = best_periods[best_period_indices.index(j)]
+            for d in range(degrees[j]):
+                period_infos.append(str(d + 1) + " * " + str(period))
+        #print(period_infos)
+        
+        printLog("=== AMPLITUDES =================================================================")
+        for i, (lbl, a, se) in enumerate(zip(ampl_labels, amplitudes, se_amplitudes)):
+            period_info = period_infos[i]
+            printLog(f"{lbl:12s}: {a:.8e} ± {se:.3e}  Period: {period_info}")
+        printLog("================================================================================")            
+        printLog()
+    n_panams = N - dof
     printLog(f"RSS [Sum(O-C)^2] = {rss:.6e}, sigma = {(sigma2**0.5):.6e}")
-    printLog(f"Npoints = {N}, dof = {dof}, Nparameters = {N - dof}")
+    printLog(f"Npoints = {N}, dof = {dof}, Nparams = {n_panams}")
+    printLog(f"R.M.S. accuracy of the fit sigma[x_c] = {np.sqrt((n_panams / N / dof) * rss)}")
     printLog()
     printLog("================================================================================")
     printLog()
@@ -184,7 +218,7 @@ def optimize_periods_with_errors(time, mag,
         p = len(coeffs)
         dof = max(N - p, 1)
         sigma2 = rss / dof
-        print_linear_coefficients_and_amplitudes(printLog, N, X, alg_poly, coeffs, rss, sigma2, dof)
+        print_linear_coefficients_and_amplitudes(printLog, N, X, alg_poly, initial_periods, degrees, [], [], coeffs, rss, sigma2, dof)
         return {
             'fitted': fitted, 
             'message': log_message
@@ -247,7 +281,7 @@ def optimize_periods_with_errors(time, mag,
     # Print results
     print_optimized_periods(printLog, best_periods, se_periods, period_indices)
 
-    print_linear_coefficients_and_amplitudes(printLog, N, X, alg_poly, coeffs, rss, sigma2, dof)
+    print_linear_coefficients_and_amplitudes(printLog, N, X, alg_poly, initial_periods, degrees, best_periods, period_indices, coeffs, rss, sigma2, dof)
 
     output = {
         'fitted': fitted,

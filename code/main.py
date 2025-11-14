@@ -250,7 +250,7 @@ def main():
     print()
     root = Tk()
     root.protocol("WM_DELETE_WINDOW", lambda: shutdown(root))
-    root.title("V*-mini")
+    root.title("V*-fit")
     menu = Menu(root)
     root.config(menu=menu)
 

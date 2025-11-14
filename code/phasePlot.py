@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from tkinter import Toplevel, Frame, Label, Entry, Button, StringVar, messagebox
+import numpy as np
 
 param_period = None
 param_epoch = None
@@ -35,9 +36,15 @@ def phaseParamApply(phaseDialog, period, epoch, input_data):
         t = input_data['Time'].to_numpy()
         m = input_data['Mag'].to_numpy()
         std_phase = ((t - epoch_v) % period_v) / period_v
-        plt.plot(std_phase, m, 'ro')
+        std_phase2 = np.concatenate([std_phase, std_phase - 1.0])
+        m2 = np.concatenate([m, m])
+        
+        plt.plot(std_phase2, m2, '.', color='royalblue')
         plt.ylim(max(input_data['Mag']), min(input_data['Mag']))
+        plt.grid(True, linestyle='--', color='gray', alpha=0.3)
+        plt.title('Phase Plot')
         plt.show()
+        plt.pause(0.001)  # Forces redraw: needed in Spyder
     except Exception as e:
         messagebox.showinfo(None, repr(e), parent=phaseDialog)
 

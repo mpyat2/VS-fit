@@ -28,9 +28,10 @@ def plotData():
     fig = plt.figure(0)
     fig.clear()
     global input_data
-    plt.plot(input_data['Time'], input_data['Mag'], 'r.')
+    plt.plot(input_data['Time'], input_data['Mag'], '.', color='royalblue')
     plt.ylim(max(input_data['Mag']), min(input_data['Mag']))
     plt.title('Input')
+    plt.grid(True, linestyle='--', color='gray', alpha=0.3)
     plt.show()
     plt.pause(0.001)  # Forces redraw: needed in Spyder
 
@@ -48,6 +49,7 @@ def plotDftResult(plot_power):
         #plt.ylabel('Semi-amplitude', fontsize=15)
     #plt.tick_params(axis='both', which='major', labelsize=15)
     plt.title('DCDFT')
+    plt.grid(True, linestyle='--', color='gray', alpha=0.3)
     plt.show()
     plt.pause(0.001)  # Forces redraw: needed in Spyder
 
@@ -55,7 +57,7 @@ def plotFitResult():
     fig = plt.figure(2)
     fig.clear()
     global fit_result    
-    plt.plot(fit_result['Time'], fit_result['Mag'], 'r.')
+    plt.plot(fit_result['Time'], fit_result['Mag'], '.', color='royalblue')
     plt.plot(fit_result['Time'], fit_result['Fit'], 'k.')
     #plt.plot(fit_result['Time'], fit_result['Fit_L'], 'b--')
     #plt.plot(fit_result['Time'], fit_result['Fit_U'], 'b--')
@@ -66,6 +68,7 @@ def plotFitResult():
     #plt.ylabel('Magnitude', fontsize=15)
     #plt.tick_params(axis='both', which='major', labelsize=15)
     plt.title('Approximation')
+    plt.grid(True, linestyle='--', color='gray', alpha=0.3)
     plt.show()
     plt.pause(0.001)  # Forces redraw: needed in Spyder
 

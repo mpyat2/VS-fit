@@ -32,7 +32,7 @@ def plotData():
     plt.ylim(max(input_data['Mag']), min(input_data['Mag']))
     plt.title('Input')
     plt.grid(True, linestyle='--', color='gray', alpha=0.3)
-    plt.show()
+    plt.show(block=False)
     plt.pause(0.001)  # Forces redraw: needed in Spyder
 
 def plotDftResult(plot_power):
@@ -50,7 +50,7 @@ def plotDftResult(plot_power):
     #plt.tick_params(axis='both', which='major', labelsize=15)
     plt.title('DCDFT')
     plt.grid(True, linestyle='--', color='gray', alpha=0.3)
-    plt.show()
+    plt.show(block=False)
     plt.pause(0.001)  # Forces redraw: needed in Spyder
 
 def plotFitResult():
@@ -69,7 +69,7 @@ def plotFitResult():
     #plt.tick_params(axis='both', which='major', labelsize=15)
     plt.title('Approximation')
     plt.grid(True, linestyle='--', color='gray', alpha=0.3)
-    plt.show()
+    plt.show(block=False)
     plt.pause(0.001)  # Forces redraw: needed in Spyder
 
 def openFile(master):

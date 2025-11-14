@@ -14,7 +14,7 @@ def polyfit_fixed_periods(time, mag, alg_poly, periods, degrees, return_X):
     for i in range(alg_poly + 1):
         fit_arguments.append(temp_t ** i)
 
-    # Up to 3 trigonometric series
+    # Trigonometric part
     for j in range(len(periods)):
         period = periods[j]
         degree = int(degrees[j])
@@ -23,11 +23,11 @@ def polyfit_fixed_periods(time, mag, alg_poly, periods, degrees, return_X):
             fit_arguments.append(np.cos(a))
             fit_arguments.append(np.sin(a))
 
-    X = np.column_stack(fit_arguments) if len(fit_arguments) > 0 else np.zeros((len(time), 0))
+    X = np.column_stack(fit_arguments)
 
     # Solve least squares
-    coeffs, residuals_sum, rank, s = np.linalg.lstsq(X, mag, rcond=None)
-    fitted = X @ coeffs if X.size else np.zeros_like(mag)
+    coeffs, _, _, _ = np.linalg.lstsq(X, mag, rcond=None)
+    fitted = X @ coeffs
     residuals = mag - fitted
     rss = np.sum(residuals**2)
 
@@ -40,14 +40,15 @@ def polyfit_fixed_periods(time, mag, alg_poly, periods, degrees, return_X):
 # Utility: numerical Jacobian of residual vector wrt selected period variables
 # -------------------------
 def numerical_jacobian_residuals(time, mag, alg_poly, b_periods, degrees, period_indices, eps_rel=1e-6):
+    # ChatGPT comment!
     """
     Compute Jacobian J (N x k) of residual vector r = mag - X@beta
     w.r.t. the vector of period variables (period_indices list).
     Use finite differences on periods. eps_rel relative step.
     """
     # base residuals and fitted
-    rss0, fitted0, coeffs0, X0 = polyfit_fixed_periods(time, mag, alg_poly, b_periods, degrees, True)
-    r0 = mag - fitted0
+    _, fitted0, _ = polyfit_fixed_periods(time, mag, alg_poly, b_periods, degrees, False)
+    #r0 = mag - fitted0
     N = len(mag)
     k = len(period_indices)
     J = np.zeros((N, k), dtype=float)
@@ -59,12 +60,14 @@ def numerical_jacobian_residuals(time, mag, alg_poly, b_periods, degrees, period
         periods_pert = b_periods.copy()
         periods_pert[idx] = p0 + h
         # compute residuals at perturbed period
-        rss_p, fitted_p, _, Xp = polyfit_fixed_periods(time, mag, alg_poly, periods_pert, degrees, return_X=True)
-        rp = mag - fitted_p
+        _, fitted_p, _ = polyfit_fixed_periods(time, mag, alg_poly, periods_pert, degrees, False)
+        #rp = mag - fitted_p
         # finite difference column
-        J[:, col] = (rp - r0) / h
+        #J[:, col] = (rp - r0) / h
+        J[:, col] = (fitted0 - fitted_p) / h
 
-    return J, r0, X0, coeffs0
+    return J
+
 
 def print_initial_periods(printLog, init_periods):
     # Initial periods
@@ -226,7 +229,7 @@ def optimize_periods_with_errors(time, mag,
     sigma2 = rss / dof
 
     # Now compute Jacobian J of residuals wrt periods (finite differences)
-    J, r0, X0, coeffs0 = numerical_jacobian_residuals(time, mag, alg_poly, best_periods, degrees, period_indices)
+    J = numerical_jacobian_residuals(time, mag, alg_poly, best_periods, degrees, period_indices)
 
     # This is ChatGPT comments!
     # Gauss-Newton approximation: Hessian ≈ 2 * J^T J, but covariance for periods:
@@ -236,7 +239,7 @@ def optimize_periods_with_errors(time, mag,
     try:
         cov_periods = sigma2 * np.linalg.inv(JTJ)
         se_periods = np.sqrt(np.diag(cov_periods))
-    except np.linalg.LinAlgError:
+    except Exception:
         cov_periods = None
         se_periods = None
         printLog("Warning: J^T J is singular — cannot compute period covariance via Gauss-Newton.")

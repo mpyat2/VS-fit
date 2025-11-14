@@ -73,7 +73,6 @@ def openFile(master):
     global input_data
     global dft_result
     fileName = filedialog.askopenfilename(filetypes=[('Data Files (*.dat *.txt *.csv *.tsv)', '*.dat *.txt *.csv *.tsv')])
-    #print("Selected file: ", fileName);
     if fileName:
         try:
             if plt.fignum_exists(2):
@@ -93,9 +92,8 @@ def openFile(master):
             messagebox.showinfo(None, "Error: " + str(e))
             return
         log_window.add_line(f"{fileName} loaded.")
+        log_window.add_line("")
         plotData()
-    else:
-        input_data = None
 
 def save_result(fileName, data):
     filePath = pathlib.Path(fileName)
@@ -213,14 +211,14 @@ def doPolyFit(master):
             out = fit.polyfit(t, m,
                               fitParamDialog.param_algeDegree,
                               [fitParamDialog.param_trig1Period,
-                               fitParamDialog.param_trig2Period,
-                               fitParamDialog.param_trig3Period],
+                                fitParamDialog.param_trig2Period,
+                                fitParamDialog.param_trig3Period],
                               [fitParamDialog.param_trig1Degree,                                     
-                               fitParamDialog.param_trig2Degree,
-                               fitParamDialog.param_trig3Degree],
+                                fitParamDialog.param_trig2Degree,
+                                fitParamDialog.param_trig3Degree],
                               [fitParamDialog.param_trig1Optimize,
-                               fitParamDialog.param_trig2Optimize,
-                               fitParamDialog.param_trig3Optimize],
+                                fitParamDialog.param_trig2Optimize,
+                                fitParamDialog.param_trig3Optimize],
                               compute_bootstrap=fitParamDialog.param_bootstrapForErrors)
             fit_result = out['fit_result']
             msg = f"PolyFit calculation time {(time.time() - t0):.2f} s"

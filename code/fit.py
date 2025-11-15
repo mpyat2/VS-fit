@@ -88,26 +88,26 @@ def print_initial_periods(printLog, init_periods):
     printLog()
     if len(init_periods) < 1:
         return
-    printLog("=== INITIAL PERIODS ==========================================================")
+    printLog("=== INITIAL PERIODS ============================================================")
     for i, pval in enumerate(init_periods):
         period_name = f"period_{i+1}"
-        printLog(f"{period_name} = {pval:.8f}")
-    printLog("==============================================================================")
+        printLog(f"{period_name} = {pval:.12f}")
+    printLog("================================================================================")
     printLog()
     
 def print_optimized_periods(printLog, best_periods, se_periods, period_indices):
     printLog()
     if len(period_indices) < 1:
         return
-    printLog("=== OPTIMIZED PERIODS =======================================================")
+    printLog("=== OPTIMIZED PERIODS ==========================================================")
     for i, ii in enumerate(period_indices):
         period_name = f"period_{ii+1}"
         if se_periods is not None:
             se = se_periods[i]
         else:
             se = np.nan
-        printLog(f"{period_name} = {best_periods[ii]:.8f} ± {se:.8f} (1σ)")
-    printLog("=============================================================================")
+        printLog(f"{period_name} = {best_periods[ii]:.12f} ± {se:.12f} (1σ)")
+    printLog("================================================================================")
     printLog()
     
 def print_linear_coefficients_and_amplitudes(printLog, N, X, alg_poly, 

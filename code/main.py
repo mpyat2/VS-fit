@@ -31,6 +31,8 @@ def plotData():
     plt.plot(input_data['Time'], input_data['Mag'], '.', color='royalblue')
     plt.ylim(max(input_data['Mag']), min(input_data['Mag']))
     plt.title('Input')
+    plt.xlabel('Time')
+    plt.ylabel('Magnitude')
     plt.grid(True, linestyle='--', color='gray', alpha=0.3)
     plt.show(block=False)
     plt.pause(0.001)  # Forces redraw: needed in Spyder
@@ -41,12 +43,12 @@ def plotDftResult(plot_power):
     global dft_result
     if plot_power:
         plt.plot(dft_result['freq'], dft_result['pow'], color = 'k', linestyle='-')
-        #plt.xlabel('Frequency', fontsize=15)
-        #plt.ylabel('Power', fontsize=15)
+        plt.xlabel('Frequency')
+        plt.ylabel('Power')
     else:
         plt.plot(dft_result['freq'], dft_result['amp'], color = 'k', linestyle='-')
-        #plt.xlabel('Frequency', fontsize=15)
-        #plt.ylabel('Semi-amplitude', fontsize=15)
+        plt.xlabel('Frequency')
+        plt.ylabel('Semi-amplitude')
     #plt.tick_params(axis='both', which='major', labelsize=15)
     plt.title('DCDFT')
     plt.grid(True, linestyle='--', color='gray', alpha=0.3)
@@ -68,6 +70,8 @@ def plotFitResult():
     #plt.ylabel('Magnitude', fontsize=15)
     #plt.tick_params(axis='both', which='major', labelsize=15)
     plt.title('Approximation')
+    plt.xlabel('Time')
+    plt.ylabel('Magnitude')
     plt.grid(True, linestyle='--', color='gray', alpha=0.3)
     plt.show(block=False)
     plt.pause(0.001)  # Forces redraw: needed in Spyder
@@ -94,6 +98,7 @@ def openFile(master):
             input_data = None
             messagebox.showinfo(None, "Error: " + str(e))
             return
+        log_window.add_line("")
         log_window.add_line(f"{fileName} loaded.")
         log_window.add_line("")
         plotData()

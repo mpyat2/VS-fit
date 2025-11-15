@@ -43,6 +43,8 @@ def phaseParamApply(phaseDialog, period, epoch, input_data):
         plt.ylim(max(input_data['Mag']), min(input_data['Mag']))
         plt.grid(True, linestyle='--', color='gray', alpha=0.3)
         plt.title('Phase Plot')
+        plt.xlabel('Phase')
+        plt.ylabel('Magnitude')
         plt.show(block=False)
         plt.pause(0.001)  # Forces redraw: needed in Spyder
     except Exception as e:

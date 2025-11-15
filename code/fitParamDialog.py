@@ -132,7 +132,7 @@ def fitParameters(master):
     paramDialog = Toplevel(master)
     paramDialog.protocol("WM_DELETE_WINDOW", lambda: paramDialogDestroy(paramDialog))
     paramDialog.title("Parameters")
-    paramDialog.geometry("640x200+" + str(x+20) + "+" + str(y+20))
+    paramDialog.geometry("800x200+" + str(x+20) + "+" + str(y+20))
 
     frame = Frame(paramDialog)
     frame.pack(pady=10)

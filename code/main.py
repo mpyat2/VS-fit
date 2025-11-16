@@ -1,7 +1,11 @@
 import sys
 from tkinter import Tk, Menu, filedialog, messagebox
 from log_window import LogWindow
-import matplotlib.pyplot as plt
+##
+import matplotlib
+matplotlib.use("TkAgg")
+import plotWind
+##
 import pandas as pd
 import pathlib
 import time
@@ -15,79 +19,94 @@ import phasePlot
 NAMES = ['Time', 'Mag']
 DTYPE = {'Time': 'float64', 'Mag': 'float64'}
 
+log_window = None
+
+plotWind0 = None # Input data
+plotWind1 = None # DFT result
+plotWind2 = None # Fit result
 input_data = None
 dft_result = None
 fit_result = None
-log_window = None
+
+def clear_log(master):
+    try:
+        log_window.clear()
+    except Exception as e:
+        messagebox.showinfo(None, "Error: " + str(e), parent=master)
+
+def add_to_log(master, text):
+    try:
+        log_window.add_line(text)
+    except Exception as e:
+        messagebox.showinfo(None, "Error: " + str(e), parent=master)
 
 def shutdown(master):
-    plt.close('all')
+    try:
+        master.quit() # stop mainloop if running: required in Spyder
+    except:
+        pass    
     master.destroy()
 
-def plotData():
-    fig = plt.figure(0)
-    fig.clear()
-    global input_data
-    plt.plot(input_data['Time'], input_data['Mag'], '.', color='royalblue')
-    plt.ylim(max(input_data['Mag']), min(input_data['Mag']))
-    plt.title('Input')
-    plt.xlabel('Time')
-    plt.ylabel('Magnitude')
-    plt.grid(True, linestyle='--', color='gray', alpha=0.3)
-    plt.show(block=False)
-    plt.pause(0.001)  # Forces redraw: needed in Spyder
+def plotData(master):
+    def plot_input(ax):
+        ax.plot(input_data['Time'], input_data['Mag'], '.', color='royalblue')
+        ax.set_ylim(max(input_data["Mag"]), min(input_data["Mag"]))
+        ax.set_title('Input')
+        ax.set_xlabel('Time')
+        ax.set_ylabel('Magnitude')
+        ax.grid(True, linestyle='--', color='gray', alpha=0.3)
+    global plotWind0
+    if plotWind0 is None: 
+        plotWind0 =  plotWind.PlotWindow(master, title="Input Data")
+    plotWind0.show(plot_input)
 
-def plotDftResult(plot_power):
-    fig = plt.figure(1)
-    fig.clear()
-    global dft_result
-    if plot_power:
-        plt.plot(dft_result['freq'], dft_result['pow'], color = 'k', linestyle='-')
-        plt.xlabel('Frequency')
-        plt.ylabel('Power')
-    else:
-        plt.plot(dft_result['freq'], dft_result['amp'], color = 'k', linestyle='-')
-        plt.xlabel('Frequency')
-        plt.ylabel('Semi-amplitude')
-    #plt.tick_params(axis='both', which='major', labelsize=15)
-    plt.title('DCDFT')
-    plt.grid(True, linestyle='--', color='gray', alpha=0.3)
-    plt.show(block=False)
-    plt.pause(0.001)  # Forces redraw: needed in Spyder
+def plotDftResult(master, plot_power):
+    def plot_dft(ax):
+        global dft_result
+        if plot_power:
+            ax.plot(dft_result['freq'], dft_result['pow'], color = 'k', linestyle='-')
+            ax.set_xlabel('Frequency')
+            ax.set_ylabel('Power')
+        else:
+            ax.plot(dft_result['freq'], dft_result['amp'], color = 'k', linestyle='-')
+            ax.set_xlabel('Frequency')
+            ax.set_ylabel('Semi-amplitude')
+        ax.set_title('DCDFT')
+        ax.grid(True, linestyle='--', color='gray', alpha=0.3)
+    global plotWind1
+    if plotWind1 is None: 
+        plotWind1 =  plotWind.PlotWindow(master, title="Periodogram")
+    plotWind1.show(plot_dft)
 
-def plotFitResult():
-    fig = plt.figure(2)
-    fig.clear()
-    global fit_result    
-    plt.plot(fit_result['Time'], fit_result['Mag'], '.', color='royalblue')
-    plt.plot(fit_result['Time'], fit_result['Fit'], 'k.')
-    #plt.plot(fit_result['Time'], fit_result['Fit_L'], 'b--')
-    #plt.plot(fit_result['Time'], fit_result['Fit_U'], 'b--')
-    y_min = min(min(fit_result['Mag']), min(fit_result['Fit']))
-    y_max = max(max(fit_result['Mag']), max(fit_result['Fit']))
-    plt.ylim(y_max, y_min)
-    #plt.xlabel('Time', fontsize=15)
-    #plt.ylabel('Magnitude', fontsize=15)
-    #plt.tick_params(axis='both', which='major', labelsize=15)
-    plt.title('Approximation')
-    plt.xlabel('Time')
-    plt.ylabel('Magnitude')
-    plt.grid(True, linestyle='--', color='gray', alpha=0.3)
-    plt.show(block=False)
-    plt.pause(0.001)  # Forces redraw: needed in Spyder
+def plotFitResult(master):
+    def plot_fit(ax):
+        global fit_result    
+        ax.plot(fit_result['Time'], fit_result['Mag'], '.', color='royalblue')
+        ax.plot(fit_result['Time'], fit_result['Fit'], 'k.')
+        y_min = min(min(fit_result['Mag']), min(fit_result['Fit']))
+        y_max = max(max(fit_result['Mag']), max(fit_result['Fit']))
+        ax.set_ylim(y_max, y_min)
+        ax.set_title('Approximation')
+        ax.set_xlabel('Time')
+        ax.set_ylabel('Magnitude')
+        ax.grid(True, linestyle='--', color='gray', alpha=0.3)
+    global plotWind2        
+    if plotWind2 is None: 
+        plotWind2 =  plotWind.PlotWindow(master, title="Approximation")
+    plotWind2.show(plot_fit)
 
 def openFile(master):
     global input_data
     global dft_result
-    fileName = filedialog.askopenfilename(filetypes=[('Data Files (*.dat *.txt *.csv *.tsv)', '*.dat *.txt *.csv *.tsv')])
+    fileName = filedialog.askopenfilename(parent=master, filetypes=[('Data Files (*.dat *.txt *.csv *.tsv)', '*.dat *.txt *.csv *.tsv')])
     if fileName:
         try:
-            if plt.fignum_exists(2):
-                plt.figure(2).clear()
-            if plt.fignum_exists(1):
-                plt.figure(1).clear()
-            if plt.fignum_exists(0):
-                plt.figure(0).clear()
+            global plotWind0
+            global plotWind1
+            global plotWind2
+            if plotWind2 is not None: plotWind2.show(None)
+            if plotWind1 is not None: plotWind1.show(None)
+            if plotWind0 is not None: plotWind0.show(None)
             dft_result = None
             input_data = None
             input_data = pd.read_csv(fileName, 
@@ -96,85 +115,89 @@ def openFile(master):
                                      sep=r'\s+', engine='python')
         except Exception as e:
             input_data = None
-            messagebox.showinfo(None, "Error: " + str(e))
+            messagebox.showinfo(None, "Error: " + str(e), parent=master)
             return
-        log_window.add_line("")
-        log_window.add_line(f"{fileName} loaded.")
-        log_window.add_line("")
-        plotData()
+        add_to_log(master, "")
+        add_to_log(master, f"{fileName} loaded.")
+        add_to_log(master, "")
+        plotData(master)
 
 def save_result(fileName, data):
     filePath = pathlib.Path(fileName)
     if filePath.suffix == "":
         fileName += ".tsv"
-    with open(fileName, 'w') as f:
+    with open(fileName, 'w', newline='') as f:
         # write header line with '#'
         f.write('#' + '\t'.join(data.columns) + '\n')
-        data.to_csv(f, index=False, header=False, sep='\t')        
+        data.to_csv(f, index=False, header=False, sep='\t')
 
 def saveDftResult(master):
     global dft_result
     if dft_result is None:
-        messagebox.showinfo(None, "No resulted data")
+        messagebox.showinfo(None, "No resulted data", parent=master)
         return;
-    fileName = filedialog.asksaveasfilename(filetypes=[('Tab-separated Files (*.tsv)', '*.tsv')])
+    fileName = filedialog.asksaveasfilename(parent=master, filetypes=[('Tab-separated Files (*.tsv)', '*.tsv')])
     #print("Selected file: ", fileName);
     if fileName:
         try:
             save_result(fileName, dft_result)
         except Exception as e:
-            messagebox.showinfo(None, "Error: " + str(e))
+            messagebox.showinfo(None, "Error: " + str(e), parent=master)
             return
 
 def saveFitResult(master):
     global fit_result
     if fit_result is None:
-        messagebox.showinfo(None, "No resulted data")
+        messagebox.showinfo(None, "No resulted data", parent=master)
         return;
-    fileName = filedialog.asksaveasfilename(filetypes=[('Tab-separated Files (*.tsv)', '*.tsv')])
+    fileName = filedialog.asksaveasfilename(parent=master, filetypes=[('Tab-separated Files (*.tsv)', '*.tsv')])
     if fileName :
         try:
             save_result(fileName, fit_result)
         except Exception as e:
-            messagebox.showinfo(None, "Error: " + str(e))
+            messagebox.showinfo(None, "Error: " + str(e), parent=master)
             return
 
 def doPlotData(master):
     global input_data
     if input_data is None:
-        messagebox.showinfo(None, "No data file open")
+        messagebox.showinfo(None, "No data file open", parent=master)
         return;
-    plotData()
+    plotData(master)
 
 def doPlotFolded(master):
     global input_data
     if input_data is None:
-        messagebox.showinfo(None, "No data file open")
+        messagebox.showinfo(None, "No data file open", parent=master)
         return;
-    phasePlot.plotFolded(master, input_data)
+    global plotWind0
+    if plotWind0 is None: 
+        plotWind0 = plotWind.PlotWindow(master, title="Input Data")
+    phasePlot.plotFolded(master, plotWind0, input_data)
 
 def doPlotDftResult(master, plot_power):
     if dft_result is None:
-        messagebox.showinfo(None, "No resulted data")
+        messagebox.showinfo(None, "No resulted data", parent=master)
         return;
-    plotDftResult(plot_power)
+    plotDftResult(master, plot_power)
 
 def doDCDFT(master):
     global input_data
     global dft_result
 
     if input_data is None:
-        messagebox.showinfo(None, "No data file open")
+        messagebox.showinfo(None, "No data file open", parent=master)
         return;
     dftParamDialog.dftParameters(master)
     if not dftParamDialog.param_defined:
         return
-    fig = plt.figure(1)
-    fig.clear()
+    global plotWind1
+    if plotWind1 is not None:
+        plotWind1.show(None)        
     dft_result = None
     t = input_data['Time'].to_numpy()
     m = input_data['Mag'].to_numpy()
-    log_window.add_line("DCDFT started.")
+    add_to_log(master, "DCDFT started.")
     try:
         master.config(cursor="watch")
         master.update()
@@ -187,30 +210,31 @@ def doDCDFT(master):
                                    mcv_mode=False)
             msg = f"DCDFT calculation time {(time.time() - t0):.2f} s"
             print(msg)
-            log_window.add_line(msg)
+            add_to_log(master, msg)
         finally:
             master.config(cursor="")
     except Exception as e:
-        messagebox.showinfo(None, "Error: " + str(e))
+        messagebox.showinfo(None, "Error: " + str(e), parent=master)
         return
-    plotDftResult(True)
+    plotDftResult(master, True)
 
 def doPolyFit(master):
     global input_data
     global fit_result
 
     if input_data is None:
-        messagebox.showinfo(None, "No data file open")
+        messagebox.showinfo(None, "No data file open", parent=master)
         return;
     fitParamDialog.fitParameters(master)
     if not fitParamDialog.param_defined:
         return
-    fig = plt.figure(2)
-    fig.clear()
+    global plotWind2
+    if plotWind2 is not None:
+        plotWind2.show(None)        
     fit_result = None
     t = input_data['Time'].to_numpy()
     m = input_data['Mag'].to_numpy()
-    log_window.add_line("PolyFit started.")
+    add_to_log(master, "PolyFit started.")
     try:
         master.config(cursor="watch")
         master.update()
@@ -231,15 +255,15 @@ def doPolyFit(master):
             fit_result = out['fit_result']
             msg = f"PolyFit calculation time {(time.time() - t0):.2f} s"
             print(msg)
-            log_window.add_line(msg)
-            log_window.add_line(out['message'])
+            add_to_log(master, msg)
+            add_to_log(master, out['message'])
             
         finally:
             master.config(cursor="")
     except Exception as e:
-        messagebox.showinfo(None, "Error: " + str(e))
+        messagebox.showinfo(None, "Error: " + str(e), parent=master)
         return
-    plotFitResult()
+    plotFitResult(master)
 
 
 # Ensure the 'root' at the top
@@ -247,9 +271,6 @@ def bring_to_front(root):
     root.lift()
     root.attributes('-topmost', True)
     root.after(100, lambda: root.attributes('-topmost', False))
-
-def clear_log(root):
-    log_window.clear()
 
 ##############################################################################
 
@@ -296,7 +317,7 @@ def main():
     
     global log_window
     log_window = LogWindow(root, geometry="600x300+440+40")
-    
+
     root.mainloop()
 
 ##############################################################################

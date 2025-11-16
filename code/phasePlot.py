@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 from tkinter import Toplevel, Frame, Label, Entry, Button, StringVar, messagebox
 import numpy as np
 
@@ -9,13 +8,15 @@ def phaseDialogDestroy(dialog):
     #print("phaseDialogDestroy")
     dialog.destroy()
 
-def phaseParamApply(phaseDialog, period, epoch, input_data):
+def phaseParamApply(phaseDialog, period, epoch, plotWindow, input_data):
     global param_period
     global param_epoch
     param_period = None
     param_epoch = None
     period_s = period.get()
     epoch_s = epoch.get()
+    #print(period_s)
+    #print(epoch_s)
 
     period_v = 0.0
     epoch_v = 0.0
@@ -24,37 +25,34 @@ def phaseParamApply(phaseDialog, period, epoch, input_data):
         if period_v <= 0:
             raise Exception('Error', 'Period must be > 0')
         epoch_v = float(eval(epoch_s, {}, {}))
-        #if epoch_v <= 0:
-        #    raise Exception('Error', 'Epoch > 0')
-        #print(period_v)
-        #print(epoch_v)
+        
+        if plotWindow is not None:
+            plotWindow.show(None)
         
         param_period = period_v
         param_epoch = epoch_v
-        fig = plt.figure(0)
-        fig.clear()
         t = input_data['Time'].to_numpy()
         m = input_data['Mag'].to_numpy()
         std_phase = ((t - epoch_v) % period_v) / period_v
         std_phase2 = np.concatenate([std_phase, std_phase - 1.0])
         m2 = np.concatenate([m, m])
+
+        def plot_folded(ax):
+            ax.plot(std_phase2, m2, '.', color='royalblue')
+            ax.set_ylim(max(input_data['Mag']), min(input_data['Mag']))
+            ax.set_title('Phase Plot')
+            ax.set_xlabel('Phase')
+            ax.set_ylabel('Magnitude')
+            ax.grid(True, linestyle='--', color='gray', alpha=0.3)
+            
+        plotWindow.show(plot_folded)
         
-        plt.plot(std_phase2, m2, '.', color='royalblue')
-        plt.ylim(max(input_data['Mag']), min(input_data['Mag']))
-        plt.grid(True, linestyle='--', color='gray', alpha=0.3)
-        plt.title('Phase Plot')
-        plt.xlabel('Phase')
-        plt.ylabel('Magnitude')
-        plt.show(block=False)
-        plt.pause(0.001)  # Forces redraw: needed in Spyder
     except Exception as e:
         messagebox.showinfo(None, repr(e), parent=phaseDialog)
 
-def plotFolded(master, input_data):
+def plotFolded(master, plotWindow, input_data):
     x = master.winfo_x()
     y = master.winfo_y()
-    #print(x)
-    #print(y)
 
     phaseDialog = Toplevel(master)
     phaseDialog.protocol("WM_DELETE_WINDOW", lambda: phaseDialogDestroy(phaseDialog))
@@ -64,8 +62,8 @@ def plotFolded(master, input_data):
     frame = Frame(phaseDialog)
     frame.pack(pady=10)
 
-    period = StringVar()
-    epoch = StringVar()
+    period = StringVar(master=phaseDialog)
+    epoch = StringVar(master=phaseDialog)
 
     label_period = Label(frame, text="Period")
     label_period.grid(row=0, column=1)
@@ -78,7 +76,7 @@ def plotFolded(master, input_data):
     entry_epoch = Entry(frame, textvariable = epoch)
     entry_epoch.insert(0, str(param_epoch) if param_epoch is not None else "") 
     entry_epoch.grid(row=3, column=2)
-    buttonOK = Button(frame, text="Apply", command=lambda: phaseParamApply(phaseDialog, period, epoch, input_data))
+    buttonOK = Button(frame, text="Apply", command=lambda: phaseParamApply(phaseDialog, period, epoch, plotWindow, input_data))
     buttonOK.grid(row=5, column=1)
     buttonCancel = Button(frame, text="Close", command=lambda: phaseDialogDestroy(phaseDialog))
     buttonCancel.grid(row=5, column=2)

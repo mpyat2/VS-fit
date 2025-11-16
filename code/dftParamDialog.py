@@ -72,9 +72,9 @@ def dftParameters(master):
     frame = Frame(paramDialog)
     frame.pack(pady=10)
 
-    lofreq = StringVar()
-    hifreq = StringVar()
-    n_intervals = StringVar()
+    lofreq = StringVar(master=paramDialog)
+    hifreq = StringVar(master=paramDialog)
+    n_intervals = StringVar(master=paramDialog)
 
     label_lofreq = Label(frame, text="Low frequency")
     label_lofreq.grid(row=0, column=1)

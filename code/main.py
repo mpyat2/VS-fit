@@ -1,5 +1,6 @@
+import os
 import sys
-from tkinter import Tk, Menu, filedialog, messagebox
+from tkinter import Tk, Menu, Button, PhotoImage, filedialog, messagebox
 from log_window import LogWindow
 ##
 import matplotlib
@@ -311,8 +312,25 @@ def main():
     operationmenu.add_command(label='DCDFT (Ferraz-Mello)', command=lambda: doDCDFT(root))
     operationmenu.add_command(label='Polynomial Fit', command=lambda: doPolyFit(root))
 
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        img_path = os.path.join(script_dir, "icons")
+        imgOpen = PhotoImage(master=root, file=os.path.join(img_path, 'Open.png'))
+        btnOpen = Button(root, image=imgOpen, command=lambda: openFile(root))
+        btnOpen.image = imgOpen  # keep reference (? works without it)
+        btnOpen.grid(row=0, column=0, padx=5, pady=5)
+        imgDft = PhotoImage(master=root, file=os.path.join(img_path, 'DCDFT.png'))
+        btnDft = Button(root, image=imgDft, command=lambda: doDCDFT(root))
+        btnDft.image = imgDft  # keep reference (? works without it)
+        btnDft.grid(row=0, column=1, padx=5, pady=5)
+        imgApprox = PhotoImage(master=root, file=os.path.join(img_path, 'Approx.png'))
+        btnApprox = Button(root, image=imgApprox, command=lambda: doPolyFit(root))
+        btnApprox.image = imgApprox  # keep reference (? works without it)
+        btnApprox.grid(row=0, column=2, padx=5, pady=5)
+    except Exception as e:
+        print(e)
+    
     root.geometry("320x100+40+40")
-
     bring_to_front(root)
     
     global log_window

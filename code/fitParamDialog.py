@@ -1,5 +1,8 @@
 from tkinter import Toplevel, Frame, Label, Entry, Button, Checkbutton, StringVar, IntVar, messagebox
 
+# Max number of periods to fit
+MAX_PERIODS = 9
+
 param_defined = False
 param_algDegree = 0
 param_periods = []
@@ -75,8 +78,6 @@ def createCheckBox(frame, intvariable, initValue, r1, c1):
     return checkbox
 
 def fitParameters(master):
-    MAX_PERIODS = 9
-    
     global param_defined    
     global param_algDegree
     global param_periods
@@ -92,10 +93,10 @@ def fitParameters(master):
     paramDialog = Toplevel(master)
     paramDialog.protocol("WM_DELETE_WINDOW", lambda: paramDialogDestroy(paramDialog))
     paramDialog.title("Parameters")
-    paramDialog.geometry("800x360+" + str(x+20) + "+" + str(y+20))
+    paramDialog.geometry("+" + str(x+20) + "+" + str(y+20))
 
     frame = Frame(paramDialog)
-    frame.pack(pady=10)
+    frame.pack(padx=10, pady=10)
 
     intVarBootstrapErr = IntVar(master=paramDialog)
     strVarAlgDeg = StringVar(master=paramDialog)

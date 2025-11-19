@@ -57,10 +57,10 @@ def plotFolded(master, plotWindow, input_data):
     phaseDialog = Toplevel(master)
     phaseDialog.protocol("WM_DELETE_WINDOW", lambda: phaseDialogDestroy(phaseDialog))
     phaseDialog.title("Parameters")
-    phaseDialog.geometry("240x100+" + str(x+60) + "+" + str(y+60))
+    phaseDialog.geometry("+" + str(x+60) + "+" + str(y+60))
 
     frame = Frame(phaseDialog)
-    frame.pack(pady=10)
+    frame.pack(padx=10, pady=10)
 
     period = StringVar(master=phaseDialog)
     epoch = StringVar(master=phaseDialog)

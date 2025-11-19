@@ -67,10 +67,10 @@ def dftParameters(master):
     paramDialog = Toplevel(master)
     paramDialog.protocol("WM_DELETE_WINDOW", lambda: paramDialogDestroy(paramDialog))
     paramDialog.title("Parameters")
-    paramDialog.geometry("300x150+" + str(x+20) + "+" + str(y+20))
+    paramDialog.geometry("+" + str(x+20) + "+" + str(y+20))
 
     frame = Frame(paramDialog)
-    frame.pack(pady=10)
+    frame.pack(padx=10, pady=10)
 
     lofreq = StringVar(master=paramDialog)
     hifreq = StringVar(master=paramDialog)

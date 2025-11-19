@@ -324,7 +324,7 @@ def main():
     except Exception as e:
         print(e)
     
-    root.geometry("320x100+40+40")
+    root.geometry("+40+40")
     bring_to_front(root)
     
     global log_window

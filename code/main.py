@@ -242,16 +242,10 @@ def doPolyFit(master):
         try:
             t0 = time.time()
             out = fit.polyfit(t, m,
-                              fitParamDialog.param_algeDegree,
-                              [fitParamDialog.param_trig1Period,
-                                fitParamDialog.param_trig2Period,
-                                fitParamDialog.param_trig3Period],
-                              [fitParamDialog.param_trig1Degree,                                     
-                                fitParamDialog.param_trig2Degree,
-                                fitParamDialog.param_trig3Degree],
-                              [fitParamDialog.param_trig1Optimize,
-                                fitParamDialog.param_trig2Optimize,
-                                fitParamDialog.param_trig3Optimize],
+                              fitParamDialog.param_algDegree,
+                              fitParamDialog.param_periods,
+                              fitParamDialog.param_degrees,
+                              fitParamDialog.param_optFlags,
                               compute_bootstrap=fitParamDialog.param_bootstrapForErrors)
             fit_result = out['fit_result']
             msg = f"PolyFit calculation time {(time.time() - t0):.2f} s"

@@ -99,6 +99,7 @@ def plotFitResult(master):
 def openFile(master):
     global input_data
     global dft_result
+    global fit_result
     fileName = filedialog.askopenfilename(parent=master, filetypes=[('Data Files (*.dat *.txt *.csv *.tsv)', '*.dat *.txt *.csv *.tsv')])
     if fileName:
         try:
@@ -110,6 +111,7 @@ def openFile(master):
             if plotWind0 is not None: plotWind0.show(None)
             dft_result = None
             input_data = None
+            fit_result = None
             input_data = pd.read_csv(fileName, 
                                      comment='#', skip_blank_lines=True,
                                      names=NAMES, dtype=DTYPE, header=None, usecols=[0, 1],
@@ -261,6 +263,34 @@ def doPolyFit(master):
     plotFitResult(master)
 
 
+def doDetrend(master):
+    # Replace input data with detrended one: like opening a new file
+    global input_data
+    global dft_result
+    global fit_result
+
+    if fit_result is None:
+        messagebox.showinfo(None, "No fit result", parent=master)
+        return;
+    
+    global plotWind0
+    global plotWind1
+    global plotWind2
+    if plotWind2 is not None: plotWind2.show(None)
+    if plotWind1 is not None: plotWind1.show(None)
+    if plotWind0 is not None: plotWind0.show(None)
+    input_data = pd.DataFrame({
+        "Time": fit_result["Time"],
+        "Mag": fit_result["Mag"] - fit_result["Fit"]
+    })
+    dft_result = None
+    fit_result = None
+    add_to_log(master, "")
+    add_to_log(master, "Input data replaced with detrended one.")
+    add_to_log(master, "")
+    plotData(master)
+    
+
 # Ensure the 'root' at the top
 def bring_to_front(root):
     root.lift()
@@ -303,24 +333,33 @@ def main():
 
     operationmenu = Menu(menu, tearoff=False)
     menu.add_cascade(label='Operations', menu=operationmenu)
-    operationmenu.add_command(label='DCDFT (Ferraz-Mello)', command=lambda: doDCDFT(root))
-    operationmenu.add_command(label='Polynomial Fit', command=lambda: doPolyFit(root))
+    operationmenu.add_command(label='DCDFT (Ferraz-Mello)...', command=lambda: doDCDFT(root))
+    operationmenu.add_command(label='Polynomial Fit...', command=lambda: doPolyFit(root))
+    operationmenu.add_command(label='Detrend', command=lambda: doDetrend(root))
 
     try:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         img_path = os.path.join(script_dir, "icons")
+        
         imgOpen = PhotoImage(master=root, file=os.path.join(img_path, 'Open.png'))
         btnOpen = Button(root, image=imgOpen, command=lambda: openFile(root))
         btnOpen.image = imgOpen  # keep reference (? works without it)
         btnOpen.grid(row=0, column=0, padx=5, pady=5)
+        
         imgDft = PhotoImage(master=root, file=os.path.join(img_path, 'DCDFT.png'))
         btnDft = Button(root, image=imgDft, command=lambda: doDCDFT(root))
         btnDft.image = imgDft  # keep reference (? works without it)
         btnDft.grid(row=0, column=1, padx=5, pady=5)
+        
         imgApprox = PhotoImage(master=root, file=os.path.join(img_path, 'Approx.png'))
         btnApprox = Button(root, image=imgApprox, command=lambda: doPolyFit(root))
         btnApprox.image = imgApprox  # keep reference (? works without it)
         btnApprox.grid(row=0, column=2, padx=5, pady=5)
+        
+        imgDetrend = PhotoImage(master=root, file=os.path.join(img_path, 'Detrend.png'))
+        btnDetrend = Button(root, image=imgDetrend, command=lambda: doDetrend(root))
+        btnDetrend.image = imgDetrend  # keep reference (? works without it)
+        btnDetrend.grid(row=0, column=3, padx=5, pady=5)
     except Exception as e:
         print(e)
     

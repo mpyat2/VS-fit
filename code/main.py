@@ -337,6 +337,14 @@ def main():
     operationmenu.add_command(label='Polynomial Fit...', command=lambda: doPolyFit(root))
     operationmenu.add_command(label='Detrend', command=lambda: doDetrend(root))
 
+    helpmenu = Menu(menu, tearoff=False)
+    menu.add_cascade(label='Help', menu=helpmenu)
+    helpmenu.add_command(label='About...', 
+                         command=lambda: messagebox.showinfo(
+                             "About V*-fit",
+                             "Light Curve fitting program by Maksym Yu. Pyatnytskyy\n\nhttps://github.com/mpyat2/VS-fit",
+                             parent=root))
+
     try:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         img_path = os.path.join(script_dir, "icons")

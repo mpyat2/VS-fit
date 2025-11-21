@@ -4,6 +4,7 @@ param_defined = False
 param_lofreq = 0.01
 param_hifreq = 1
 param_n_intervals = 1000
+params_initialized = False
 
 def paramDialogDestroy(dialog):
     global param_defined
@@ -37,6 +38,8 @@ def paramCheck(dialog, lofreq, hifreq, n_intervals):
         n = int(eval(n_intervals_s, {}, {}))
         if n < 1:
             raise Exception('Error', 'Number of intervals must be > 0')
+        if n > 100000:
+            raise Exception('Error', 'Number of intervals must be < 100000')
         #print(low)
         #print(hi)
         #print(n)

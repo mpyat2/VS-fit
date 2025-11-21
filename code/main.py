@@ -61,18 +61,23 @@ def plotData(master):
         plotWind0 =  plotWind.PlotWindow(master, title="Input Data")
     plotWind0.show(plot_input)
 
-def plotDftResult(master, plot_power):
+def plotDftResult(master, plot_power, plot_frequency):
     def plot_dft(ax):
         global dft_result
+        x_label = 'Period'
+        y_label = 'Semi-amplitude'
+        x_col = 'per'
+        y_col = 'amp'
         if plot_power:
-            ax.plot(dft_result['freq'], dft_result['pow'], color = 'k', linestyle='-')
-            ax.set_xlabel('Frequency')
-            ax.set_ylabel('Power')
-        else:
-            ax.plot(dft_result['freq'], dft_result['amp'], color = 'k', linestyle='-')
-            ax.set_xlabel('Frequency')
-            ax.set_ylabel('Semi-amplitude')
-        ax.set_title('DCDFT')
+            y_col = 'pow'
+            y_label = 'Power'
+        if plot_frequency:
+            x_col = 'freq'
+            x_label = 'Frequency'
+        ax.plot(dft_result[x_col], dft_result[y_col], color = 'k', linestyle='-')
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+        ax.set_title('DC DFT')
         ax.grid(True, linestyle='--', color='gray', alpha=0.3)
     global plotWind1
     if plotWind1 is None: 
@@ -109,7 +114,7 @@ def openFile(master):
             if plotWind2 is not None: plotWind2.show(None)
             if plotWind1 is not None: plotWind1.show(None)
             if plotWind0 is not None: plotWind0.show(None)
-            dft_result = None
+            dft_result = None; dftParamDialog.params_initialized = False
             input_data = None
             fit_result = None
             input_data = pd.read_csv(fileName, 
@@ -137,7 +142,7 @@ def save_result(fileName, data):
 def saveDftResult(master):
     global dft_result
     if dft_result is None:
-        messagebox.showinfo(None, "No resulted data", parent=master)
+        messagebox.showinfo("DC DFT", "No resulted data", parent=master)
         return;
     fileName = filedialog.asksaveasfilename(parent=master, filetypes=[('Tab-separated Files (*.tsv)', '*.tsv')])
     #print("Selected file: ", fileName);
@@ -151,7 +156,7 @@ def saveDftResult(master):
 def saveFitResult(master):
     global fit_result
     if fit_result is None:
-        messagebox.showinfo(None, "No resulted data", parent=master)
+        messagebox.showinfo("Approximation", "No resulted data", parent=master)
         return;
     fileName = filedialog.asksaveasfilename(parent=master, filetypes=[('Tab-separated Files (*.tsv)', '*.tsv')])
     if fileName :
@@ -164,33 +169,54 @@ def saveFitResult(master):
 def doPlotData(master):
     global input_data
     if input_data is None:
-        messagebox.showinfo(None, "No data file open", parent=master)
+        messagebox.showinfo("Plot", "No data file open", parent=master)
         return;
     plotData(master)
 
 def doPlotFolded(master):
     global input_data
     if input_data is None:
-        messagebox.showinfo(None, "No data file open", parent=master)
+        messagebox.showinfo("Phase Plot", "No data file open", parent=master)
         return;
     global plotWind0
     if plotWind0 is None: 
         plotWind0 = plotWind.PlotWindow(master, title="Input Data")
     phasePlot.plotFolded(master, plotWind0, input_data)
 
-def doPlotDftResult(master, plot_power):
+def doPlotDftResult(master, plot_power, plot_frequency):
     if dft_result is None:
-        messagebox.showinfo(None, "No resulted data", parent=master)
+        messagebox.showinfo("DC DFT", "No DC DFT result", parent=master)
         return;
-    plotDftResult(master, plot_power)
+    plotDftResult(master, plot_power, plot_frequency)
 
 def doDCDFT(master):
     global input_data
     global dft_result
 
     if input_data is None:
-        messagebox.showinfo(None, "No data file open", parent=master)
+        messagebox.showinfo("DC DFT", "No data file open", parent=master)
         return;
+        
+    t = input_data['Time'].to_numpy()
+    m = input_data['Mag'].to_numpy()
+    
+    if not dftParamDialog.params_initialized:
+        dftParamDialog.params_initialized = True
+        interval = dft.median_interval(t)
+        if interval > 0: # False also for 'nan'
+            hifreq = 1.0 / interval / 2.0; # Approximate Nyquist
+            if hifreq > 50.0: hifreq = 50.0
+            time_interval = max(t) - min(t)
+            recommended_freq_resolution = 0.05 / time_interval
+            lofreq = recommended_freq_resolution
+            if lofreq < 1.0: lofreq = round(lofreq, 6)
+            if lofreq < 0.000001: lofreq = 0.000001
+            if hifreq <= lofreq:
+                hifreq = lofreq + 100 * recommended_freq_resolution
+            dftParamDialog.param_lofreq = lofreq
+            dftParamDialog.param_hifreq = hifreq
+            dftParamDialog.param_n_intervals = round((hifreq - lofreq) / recommended_freq_resolution) + 1
+    
     dftParamDialog.dftParameters(master)
     if not dftParamDialog.param_defined:
         return
@@ -198,9 +224,7 @@ def doDCDFT(master):
     if plotWind1 is not None:
         plotWind1.show(None)        
     dft_result = None
-    t = input_data['Time'].to_numpy()
-    m = input_data['Mag'].to_numpy()
-    add_to_log(master, "DCDFT started.")
+    add_to_log(master, "DC DFT started.")
     try:
         master.config(cursor="watch")
         master.update()
@@ -209,9 +233,9 @@ def doDCDFT(master):
             dft_result = dft.dcdft(t, m, 
                                    lowfreq=dftParamDialog.param_lofreq, 
                                    hifreq=dftParamDialog.param_hifreq, 
-                                   n_freq=dftParamDialog.param_n_intervals, 
+                                   n_intervals=dftParamDialog.param_n_intervals, 
                                    mcv_mode=False)
-            msg = f"DCDFT calculation time {(time.time() - t0):.2f} s"
+            msg = f"DC DFT calculation time {(time.time() - t0):.2f} s"
             print(msg)
             add_to_log(master, msg)
         finally:
@@ -219,14 +243,14 @@ def doDCDFT(master):
     except Exception as e:
         messagebox.showinfo(None, "Error: " + str(e), parent=master)
         return
-    plotDftResult(master, True)
+    plotDftResult(master, True, True)
 
 def doPolyFit(master):
     global input_data
     global fit_result
 
     if input_data is None:
-        messagebox.showinfo(None, "No data file open", parent=master)
+        messagebox.showinfo("Approximation", "No data file open", parent=master)
         return;
     fitParamDialog.fitParameters(master)
     if not fitParamDialog.param_defined:
@@ -270,8 +294,11 @@ def doDetrend(master):
     global fit_result
 
     if fit_result is None:
-        messagebox.showinfo(None, "No fit result", parent=master)
-        return;
+        messagebox.showinfo("Detrend", "No fit result", parent=master)
+        return
+    
+    if not messagebox.askyesno("Detrend", "Subtract the approximation from the input data?"):
+        return
     
     global plotWind0
     global plotWind1
@@ -283,7 +310,7 @@ def doDetrend(master):
         "Time": fit_result["Time"],
         "Mag": fit_result["Mag"] - fit_result["Fit"]
     })
-    dft_result = None
+    dft_result = None; dftParamDialog.params_initialized = False
     fit_result = None
     add_to_log(master, "")
     add_to_log(master, "Input data replaced with detrended one.")
@@ -326,14 +353,16 @@ def main():
     viewmenuInput.add_command(label='Phase', command=lambda: doPlotFolded(root))
     viewmenuResult = Menu(menu, tearoff=False)
     viewmenu.add_cascade(label='Plot DFT Result', menu=viewmenuResult)
-    viewmenuResult.add_command(label='Power', command=lambda: doPlotDftResult(root, True))
-    viewmenuResult.add_command(label='Semi-amplitude', command=lambda: doPlotDftResult(root, False))
+    viewmenuResult.add_command(label='Power(Frequency)', command=lambda: doPlotDftResult(root, True, True))
+    viewmenuResult.add_command(label='Semi-amplitude(Frequency)', command=lambda: doPlotDftResult(root, False, True))
+    viewmenuResult.add_command(label='Power(Period)', command=lambda: doPlotDftResult(root, True, False))
+    viewmenuResult.add_command(label='Semi-amplitude(Period)', command=lambda: doPlotDftResult(root, False, False))
     viewmenu.add_separator()
     viewmenu.add_command(label='Clear log', command=lambda: clear_log(root))
 
     operationmenu = Menu(menu, tearoff=False)
     menu.add_cascade(label='Operations', menu=operationmenu)
-    operationmenu.add_command(label='DCDFT (Ferraz-Mello)...', command=lambda: doDCDFT(root))
+    operationmenu.add_command(label='DC DFT (Ferraz-Mello)...', command=lambda: doDCDFT(root))
     operationmenu.add_command(label='Polynomial Fit...', command=lambda: doPolyFit(root))
     operationmenu.add_command(label='Detrend', command=lambda: doDetrend(root))
 

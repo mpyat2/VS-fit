@@ -3,18 +3,21 @@ import pandas as pd
 
 # Translated from R (Rprogs.r) (with a tiny fix)
 # See https://www.aavso.org/software-directory, https://www.aavso.org/sites/default/files/software/Rcodes.zip
-def dcdft(t, mag, lowfreq, hifreq, n_freq, mcv_mode):
-    ndata = len(t)
+def dcdft(time, mag, lowfreq, hifreq, n_intervals, mcv_mode):
+    ndata = len(time)
+    t_mean = np.mean(time)
     mag_var = np.var(mag)
+    
+    t = time - t_mean
 
     freq = []
     per = []
     power = []
     amp = []
     
-    frequencies = np.linspace(lowfreq, hifreq, n_freq + 1)
-    
-    for nu in frequencies:
+    freq_step = (hifreq - lowfreq) / n_intervals
+    for i in range(n_intervals + 1):
+        nu = lowfreq + i * freq_step
         freq.append(nu)
         per.append(1 / nu)
         # Calculate cos and sin (c1 and s1) of the time-sequence for the trial frequency
@@ -39,3 +42,11 @@ def dcdft(t, mag, lowfreq, hifreq, n_freq, mcv_mode):
         
     dcd = pd.DataFrame({'freq': freq, 'per': per, 'amp': amp, 'pow': power})
     return dcd
+
+def median_interval(times):
+    # Compute successive differences
+    dt = np.diff(np.sort(times))
+    # Keep only positive (or non-zero) intervals
+    dt_nonzero = dt[dt != 0]
+    # Compute the median
+    return np.median(dt_nonzero)

@@ -38,16 +38,16 @@ def paramCheck(dialog,
     n_of_periods = len(strVarPeriods)
     
     try:
-        aD = int(eval(strVarAlgDeg.get() or "0", {}, {}))
+        aD = int(eval(strVarAlgDeg.get().strip() or "0", {}, {}))
         if aD < 0:
             raise Exception('Error', 'Algebraic polynomial degree must be >= 0')
         param_algDegree = aD
             
         for i in range(n_of_periods):
-            tD = int(eval(strVarDegrees[i].get() or "0", {}, {}))
+            tD = int(eval(strVarDegrees[i].get().strip() or "0", {}, {}))
             if tD < 0 or tD > 9:
                 raise Exception('Error', f'Trigonometric polynomial {i+1} degree must be between 0 and 9')
-            tP = float(eval(strVarPeriods[i].get() or "0", {}, {}))
+            tP = float(eval(strVarPeriods[i].get().strip() or "0", {}, {}))
             if tP < 0:
                 raise Exception('Error', f'Trigonometric polynomial {i+1} period must be >= 0')
             tO = optFlags[i].get()
@@ -65,16 +65,19 @@ def paramCheck(dialog,
         return
 
 def createEntry(frame, labelText, textvariable, initValue, r1, c1, r2, c2):
-    Label(frame, text=labelText).grid(row=r1, column=c1)
+    if labelText:
+        Label(frame, text=labelText).grid(row=r1, column=c1)
     entry = Entry(frame, textvariable=textvariable)
     entry.insert(0, str(initValue)) 
     entry.grid(row=r2, column=c2)
     return entry
 
-def createCheckBox(frame, intvariable, initValue, r1, c1):
+def createCheckBox(frame, labelText, intvariable, initValue, r1, c1, r2, c2):
+    if labelText:
+        Label(frame, text=labelText).grid(row=r1, column=c1)
     checkbox = Checkbutton(frame, variable=intvariable)
     checkbox.deselect() if initValue == 0 else checkbox.select()
-    checkbox.grid(row=r1, column=c1)
+    checkbox.grid(row=r2, column=c2)
     return checkbox
 
 def fitParameters(master):
@@ -119,13 +122,15 @@ def fitParameters(master):
             p = 0
             d = 0
             o = 0
-        createEntry(frame, f"Trig. Polyn. Period, Degree, Optimize {i+1}", strVarPeriods[i], p, i + 1, 1, i + 1, 2)
-        createEntry(frame, "", strVarDegrees[i], d, i + 1, 3, i + 1, 4)
-        createCheckBox(frame, intVarOptFlags[i], o, i + 1, 5)
+        createEntry(frame, f"Trig. Polyn. Period {i+1}", strVarPeriods[i], p, i + 1, 1, i + 1, 2)
+        createEntry(frame, "Degree", strVarDegrees[i], d, i + 1, 3, i + 1, 4)
+        createCheckBox(frame, "Optimize", intVarOptFlags[i], o, i + 1, 5, i + 1, 6)
     
-    Label(frame, text="Calculate period errors via bootstrap").grid(row=MAX_PERIODS + 1, column=4)
-    createCheckBox(frame, intVarBootstrapErr, param_bootstrapForErrors, MAX_PERIODS + 1, 5)
-    Label(frame, text="May take a while!").grid(row=MAX_PERIODS + 1, column=6)
+    label = Label(frame, text="Calculate period errors via bootstrap")
+    label.grid(row=MAX_PERIODS + 1, column=4, columnspan=2)
+    createCheckBox(frame, "",
+                   intVarBootstrapErr, param_bootstrapForErrors, MAX_PERIODS + 1, 5, MAX_PERIODS + 1, 6)
+    Label(frame, text="May take a while!").grid(row=MAX_PERIODS + 1, column=7)
 
     buttonOK = Button(frame, text="OK", 
                       command=lambda: paramCheck(paramDialog,

@@ -52,5 +52,8 @@ class PlotWindow:
         self.toolbar.update()
         self.toolbar.pack(fill="x")
 
+        self.win.lift()
+        self.win.focus_force()
+
         # return axes if you want to customize further
         return ax

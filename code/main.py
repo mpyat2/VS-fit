@@ -1,6 +1,6 @@
 import os
 import sys
-from tkinter import Tk, Menu, Button, PhotoImage, filedialog, messagebox
+from tkinter import Tk, Frame, Label, Menu, Button, PhotoImage, filedialog, messagebox
 from log_window import LogWindow
 ##
 import matplotlib
@@ -25,6 +25,7 @@ log_window = None
 plotWind0 = None # Input data
 plotWind1 = None # DFT result
 plotWind2 = None # Fit result
+
 input_data = None
 dft_result = None
 fit_result = None
@@ -47,6 +48,12 @@ def shutdown(master):
     except:
         pass    
     master.destroy()
+
+def waitOverlay(master):
+    overlay = Frame(master, bg="#cccccc")
+    overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
+    Label(overlay, text="Please wait...", bg="#c0c0c0").place(relx=0.5, rely=0.5, anchor="center")
+    return overlay
 
 def plotData(master):
     def plot_input(ax):
@@ -226,7 +233,9 @@ def doDCDFT(master):
     dft_result = None
     add_to_log(master, "DC DFT started.")
     try:
-        master.config(cursor="watch")
+        master.focus_force()
+        master.config(cursor="wait")
+        overlay = waitOverlay(master)
         master.update()
         try:
             t0 = time.time()
@@ -239,6 +248,7 @@ def doDCDFT(master):
             print(msg)
             add_to_log(master, msg)
         finally:
+            overlay.destroy()
             master.config(cursor="")
     except Exception as e:
         messagebox.showinfo(None, "Error: " + str(e), parent=master)
@@ -263,7 +273,9 @@ def doPolyFit(master):
     m = input_data['Mag'].to_numpy()
     add_to_log(master, "PolyFit started.")
     try:
-        master.config(cursor="watch")
+        master.focus_force()
+        master.config(cursor="wait")
+        overlay = waitOverlay(master)
         master.update()
         try:
             t0 = time.time()
@@ -278,8 +290,8 @@ def doPolyFit(master):
             print(msg)
             add_to_log(master, msg)
             add_to_log(master, out['message'])
-            
         finally:
+            overlay.destroy()
             master.config(cursor="")
     except Exception as e:
         messagebox.showinfo(None, "Error: " + str(e), parent=master)

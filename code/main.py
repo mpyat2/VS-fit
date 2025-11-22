@@ -234,7 +234,7 @@ def doDCDFT(master):
     add_to_log(master, "DC DFT started.")
     try:
         master.focus_force()
-        master.config(cursor="wait")
+        master.config(cursor="watch")
         overlay = waitOverlay(master)
         master.update()
         try:
@@ -274,7 +274,7 @@ def doPolyFit(master):
     add_to_log(master, "PolyFit started.")
     try:
         master.focus_force()
-        master.config(cursor="wait")
+        master.config(cursor="watch")
         overlay = waitOverlay(master)
         master.update()
         try:
@@ -418,6 +418,7 @@ def main():
     global log_window
     log_window = LogWindow(root, geometry="600x300+440+40")
 
+    root.resizable(False, False)
     root.mainloop()
 
 ##############################################################################

@@ -1,5 +1,6 @@
 import os
 import sys
+import webbrowser
 from tkinter import Tk, Frame, Label, Menu, Button, PhotoImage, filedialog, messagebox
 from log_window import LogWindow
 ##
@@ -353,6 +354,12 @@ def doDetrend(master):
     plotData(master)
     
 
+def doOpenHelp():
+    try:
+        webbrowser.open("https://github.com/mpyat2/VS-fit/blob/main/doc/GettingStarted.pdf")
+    except Exception as e:
+        messagebox.showerror("Error", f"Could not open help page:\n{e}")
+
 # Ensure the 'root' at the top
 def bring_to_front(root):
     root.lift()
@@ -403,6 +410,8 @@ def main():
 
     helpmenu = Menu(menu, tearoff=False)
     menu.add_cascade(label='Help', menu=helpmenu)
+    helpmenu.add_command(label='Getting started', command=lambda: doOpenHelp())
+    helpmenu.add_separator()
     helpmenu.add_command(label='About...', 
                          command=lambda: messagebox.showinfo(
                              "About V*-fit",

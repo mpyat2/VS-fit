@@ -1,9 +1,15 @@
+import threading
+import queue
+import time as pytime
 import numpy as np
 import pandas as pd
 
+stop_flag = {"stop": False, "running": False, "time": 0.0}   # mutable for safe thread sharing
+result_queue = queue.Queue()  # worker → main communication
+
 # Translated from R (Rprogs.r) (with a tiny fix)
 # See https://www.aavso.org/software-directory, https://www.aavso.org/sites/default/files/software/Rcodes.zip
-def dcdft(time, mag, lowfreq, hifreq, n_intervals, mcv_mode):
+def dcdft(time, mag, lowfreq, hifreq, n_intervals, mcv_mode=False):
     ndata = len(time)
     t_mean = np.mean(time)
     mag_var = np.var(mag)
@@ -17,6 +23,7 @@ def dcdft(time, mag, lowfreq, hifreq, n_intervals, mcv_mode):
     
     freq_step = (hifreq - lowfreq) / n_intervals
     for i in range(n_intervals + 1):
+        if stop_flag["stop"]: return None
         nu = lowfreq + i * freq_step
         freq.append(nu)
         per.append(1 / nu)
@@ -50,3 +57,53 @@ def median_interval(times):
     dt_nonzero = dt[dt != 0]
     # Compute the median
     return np.median(dt_nonzero)
+
+def worker(time, mag, lowfreq, hifreq, n_intervals):
+    try:
+        result = dcdft(
+            time=time,
+            mag=mag,
+            lowfreq=lowfreq,
+            hifreq=hifreq,
+            n_intervals=n_intervals,
+        )
+        dcdft_result = {"data": result, "error": None}
+    except Exception as e:
+        dcdft_result = {"data": None, "error": str(e)}
+    result_queue.put(dcdft_result)
+
+def check_worker_result(master, callback):
+    try:
+        dcdft_result = result_queue.get_nowait()
+    except queue.Empty:
+        # Worker still running — keep polling
+        master.after(100, lambda: check_worker_result(master, callback))
+        return
+    # Worker finished:
+    stop_flag["running"] = False
+    if dcdft_result is None:
+        callback(master, None, "Unknown error", "error")
+        return
+    if dcdft_result["data"] is None:
+        if dcdft_result["error"] is not None:
+            callback(master, None, "Error: " + dcdft_result["error"], "error")
+        else:
+            callback(master, None, "DC DFT was stopped.", "stopped")
+    else:
+        msg = f"DC DFT calculation time {(pytime.time() - stop_flag["time"]):.2f} s"
+        callback(master, dcdft_result["data"], msg, "finished")
+
+def stop_task():
+    stop_flag["stop"] = True
+
+def dcdft_async(master, callback, time, mag, lofreq, hifreq, n_intervals):
+    stop_flag["stop"] = False  # reset stop flag
+    threading.Thread(
+        target=worker,
+        args=(time, mag, lofreq, hifreq, n_intervals),
+        daemon=True
+    ).start()
+    callback(master, None, None, "started")
+    stop_flag["running"] = True
+    stop_flag["time"] = pytime.time()
+    master.after(100, lambda: check_worker_result(master, callback))

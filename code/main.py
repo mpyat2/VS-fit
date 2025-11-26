@@ -9,7 +9,7 @@ import plotWind
 ##
 import pandas as pd
 import pathlib
-import time
+import time as pytime
 import dft
 import dftParamDialog
 import fit
@@ -42,17 +42,33 @@ def add_to_log(master, text):
     except Exception as e:
         messagebox.showinfo(None, "Error: " + str(e), parent=master)
 
+def checkBackgroundTaskRunning(master):
+    if dft.stop_flag["running"]:
+        messagebox.showinfo("Please wait", "Background task is still running. Please wait until it is finished.", parent=master)
+        return True
+    return False
+
 def shutdown(master):
+    # silent check
+    if dft.stop_flag["running"]: return
     try:
         master.quit() # stop mainloop if running: required in Spyder
     except:
         pass    
     master.destroy()
 
-def waitOverlay(master):
-    overlay = Frame(master, bg="#cccccc")
+def doShutdown(master):
+    if checkBackgroundTaskRunning(master): return
+    shutdown(master)
+
+def waitOverlay(master, stopDftButton=False):
+    overlay = Frame(master, name="waitOverlay", bg="#cccccc")
     overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
-    Label(overlay, text="Please wait...", bg="#c0c0c0").place(relx=0.5, rely=0.5, anchor="center")
+    if stopDftButton:
+        btn = Button(overlay, text="Stop DC DFT", command=lambda: dft.stop_task())
+        btn.place(relx=0.5, rely=0.6, anchor="center")
+    else:
+        Label(overlay, text="Please wait...", bg="#c0c0c0").place(relx=0.5, rely=0.5, anchor="center")
     return overlay
 
 def plotData(master):
@@ -108,7 +124,8 @@ def plotFitResult(master):
         plotWind2 =  plotWind.PlotWindow(master, title="Approximation")
     plotWind2.show(plot_fit)
 
-def openFile(master):
+def doOpenFile(master):
+    if checkBackgroundTaskRunning(master): return
     global input_data
     global dft_result
     global fit_result
@@ -146,7 +163,8 @@ def save_result(fileName, data):
         f.write('#' + '\t'.join(data.columns) + '\n')
         data.to_csv(f, index=False, header=False, sep='\t')
 
-def saveDftResult(master):
+def doSaveDftResult(master):
+    if checkBackgroundTaskRunning(master): return
     global dft_result
     if dft_result is None:
         messagebox.showinfo("DC DFT", "No resulted data", parent=master)
@@ -160,7 +178,8 @@ def saveDftResult(master):
             messagebox.showinfo(None, "Error: " + str(e), parent=master)
             return
 
-def saveFitResult(master):
+def doSaveFitResult(master):
+    if checkBackgroundTaskRunning(master): return
     global fit_result
     if fit_result is None:
         messagebox.showinfo("Approximation", "No resulted data", parent=master)
@@ -174,6 +193,7 @@ def saveFitResult(master):
             return
 
 def doPlotData(master):
+    if checkBackgroundTaskRunning(master): return
     global input_data
     if input_data is None:
         messagebox.showinfo("Plot", "No data file open", parent=master)
@@ -181,6 +201,7 @@ def doPlotData(master):
     plotData(master)
 
 def doPlotFolded(master):
+    if checkBackgroundTaskRunning(master): return
     global input_data
     if input_data is None:
         messagebox.showinfo("Phase Plot", "No data file open", parent=master)
@@ -191,18 +212,38 @@ def doPlotFolded(master):
     phasePlot.plotFolded(master, plotWind0, input_data)
 
 def doPlotDftResult(master, plot_power, plot_frequency):
+    if checkBackgroundTaskRunning(master): return
     if dft_result is None:
         messagebox.showinfo("DC DFT", "No DC DFT result", parent=master)
         return;
     plotDftResult(master, plot_power, plot_frequency)
 
+def dft_callback(master, result, msg, action):
+    if action == "started":
+        waitOverlay(master, True)
+        return
+    else:
+        overlay = master.nametowidget("waitOverlay")
+        if not overlay is None:
+            overlay.destroy()
+    global dft_result
+    dft_result = result
+    if msg is None:
+        msg = "Unknown error"
+    add_to_log(master, msg)
+    if dft_result is not None:
+        plotDftResult(master, True, True)
+    else:
+        messagebox.showinfo("DC DFT", msg, parent=master)
+    
 def doDCDFT(master):
+    if checkBackgroundTaskRunning(master): return
     global input_data
     global dft_result
 
     if input_data is None:
         messagebox.showinfo("DC DFT", "No data file open", parent=master)
-        return;
+        return
         
     t = input_data['Time'].to_numpy()
     m = input_data['Mag'].to_numpy()
@@ -232,30 +273,11 @@ def doDCDFT(master):
         plotWind1.show(None)        
     dft_result = None
     add_to_log(master, "DC DFT started.")
-    try:
-        master.focus_force()
-        master.config(cursor="watch")
-        overlay = waitOverlay(master)
-        master.update()
-        try:
-            t0 = time.time()
-            dft_result = dft.dcdft(t, m, 
-                                   lowfreq=dftParamDialog.param_lofreq, 
-                                   hifreq=dftParamDialog.param_hifreq, 
-                                   n_intervals=dftParamDialog.param_n_intervals, 
-                                   mcv_mode=False)
-            msg = f"DC DFT calculation time {(time.time() - t0):.2f} s"
-            print(msg)
-            add_to_log(master, msg)
-        finally:
-            overlay.destroy()
-            master.config(cursor="")
-    except Exception as e:
-        messagebox.showinfo(None, "Error: " + str(e), parent=master)
-        return
-    plotDftResult(master, True, True)
+    # Background task
+    dft.dcdft_async(master, dft_callback, t, m, dftParamDialog.param_lofreq, dftParamDialog.param_hifreq, dftParamDialog.param_n_intervals)
 
 def doPolyFit(master):
+    if checkBackgroundTaskRunning(master): return
     global input_data
     global fit_result
 
@@ -278,7 +300,7 @@ def doPolyFit(master):
         overlay = waitOverlay(master)
         master.update()
         try:
-            t0 = time.time()
+            start_time = pytime.time()
             out = fit.polyfit(t, m,
                               fitParamDialog.param_algDegree,
                               fitParamDialog.param_periods,
@@ -286,7 +308,7 @@ def doPolyFit(master):
                               fitParamDialog.param_optFlags,
                               compute_bootstrap=fitParamDialog.param_bootstrapForErrors)
             fit_result = out['fit_result']
-            msg = f"PolyFit calculation time {(time.time() - t0):.2f} s"
+            msg = f"PolyFit calculation time {(pytime.time() - start_time):.2f} s"
             print(msg)
             add_to_log(master, msg)
             add_to_log(master, out['message'])
@@ -301,6 +323,7 @@ def doPolyFit(master):
 
 def doDetrend(master):
     # Replace input data with detrended one: like opening a new file
+    if checkBackgroundTaskRunning(master): return    
     global input_data
     global dft_result
     global fit_result
@@ -349,13 +372,13 @@ def main():
 
     filemenu = Menu(menu, tearoff=False)
     menu.add_cascade(label='File', menu=filemenu)
-    filemenu.add_command(label='Open Data File...', command=lambda: openFile(root))
+    filemenu.add_command(label='Open Data File...', command=lambda: doOpenFile(root))
     saveresult = Menu(menu, tearoff=False)
     filemenu.add_cascade(label='Save Result...', menu=saveresult)
-    saveresult.add_command(label='DCDFT Result...', command=lambda: saveDftResult(root))
-    saveresult.add_command(label='Fit Result...', command=lambda: saveFitResult(root))
+    saveresult.add_command(label='DCDFT Result...', command=lambda: doSaveDftResult(root))
+    saveresult.add_command(label='Fit Result...', command=lambda: doSaveFitResult(root))
     filemenu.add_separator()
-    filemenu.add_command(label='Exit', command=lambda: shutdown(root))
+    filemenu.add_command(label='Exit', command=lambda: doShutdown(root))
     
     viewmenu = Menu(menu, tearoff=False)
     menu.add_cascade(label='View', menu=viewmenu)
@@ -391,7 +414,7 @@ def main():
         img_path = os.path.join(script_dir, "icons")
         
         imgOpen = PhotoImage(master=root, file=os.path.join(img_path, 'Open.png'))
-        btnOpen = Button(root, image=imgOpen, command=lambda: openFile(root))
+        btnOpen = Button(root, image=imgOpen, command=lambda: doOpenFile(root))
         btnOpen.image = imgOpen  # keep reference (? works without it)
         btnOpen.grid(row=0, column=0, padx=5, pady=5)
         

@@ -90,7 +90,7 @@ def check_worker_result(master, callback):
         else:
             callback(master, None, "DC DFT was stopped.", "stopped")
     else:
-        msg = f"DC DFT calculation time {(pytime.time() - stop_flag["time"]):.2f} s"
+        msg = f"DC DFT calculation time {(pytime.time() - stop_flag['time']):.2f} s"
         callback(master, dcdft_result["data"], msg, "finished")
 
 def stop_task():

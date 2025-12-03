@@ -293,7 +293,7 @@ def optimize_periods_with_errors(time, mag,
         printLog("Running bootstrap...")
         print("(this may take a while)...")
         boot_periods = []
-        rng = np.random.default_rng()
+        rng = np.random.default_rng(seed=12345)
         for b in range(n_bootstrap):
             # sample residuals (residual bootstrap)
             # generate bootstrap mag = fitted + resampled residuals
@@ -310,6 +310,9 @@ def optimize_periods_with_errors(time, mag,
             res_b = minimize(obj_bpv, best_period_values, method=method,
                              options={'maxiter': maxiter, 'xatol': xtol, 'fatol': ftol, 'disp': False})
             boot_periods.append(res_b.x)
+            if (b + 1) % 10 == 0:
+                print(f"{b + 1} of {n_bootstrap + 1} bootstrap periods calculated.")
+        print(f"Finished: {n_bootstrap + 1} bootstrap periods calculated.")
         boot_periods = np.array(boot_periods)
         # compute bootstrap std dev for each optimized period
         boot_se = np.std(boot_periods, axis=0, ddof=1)

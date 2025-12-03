@@ -41,6 +41,10 @@ def dcdft(time, mag, lowfreq, hifreq, n_intervals, mcv_mode=False):
         
         amp.append(np.sqrt(a1**2 + a2**2))
         power.append(np.var(X @ params))
+        if (i + 1) % 1000 == 0:
+            print(f"{i + 1} of {n_intervals + 1} frequencies computed.")
+        
+    print(f"Finished: {n_intervals + 1} frequencies computed.")
     
     if mcv_mode:
         power = np.array(power) / mag_var

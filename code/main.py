@@ -39,6 +39,7 @@ def clear_log(master):
 
 def add_to_log(master, text):
     try:
+        print(text)
         log_window.add_line(text)
     except Exception as e:
         messagebox.showinfo(None, "Error: " + str(e), parent=master)
@@ -171,7 +172,6 @@ def doSaveDftResult(master):
         messagebox.showinfo("DC DFT", "No resulted data", parent=master)
         return;
     fileName = filedialog.asksaveasfilename(parent=master, filetypes=[('Tab-separated Files (*.tsv)', '*.tsv')])
-    #print("Selected file: ", fileName);
     if fileName:
         try:
             save_result(fileName, dft_result)
@@ -222,6 +222,7 @@ def doPlotDftResult(master, plot_power, plot_frequency):
 def dft_callback(master, result, msg, action):
     if action == "started":
         waitOverlay(master, True)
+        master.update()
         return
     else:
         overlay = master.nametowidget("waitOverlay")
@@ -308,11 +309,11 @@ def doPolyFit(master):
                               fitParamDialog.param_degrees,
                               fitParamDialog.param_optFlags,
                               compute_bootstrap=fitParamDialog.param_bootstrapForErrors)
+            calc_time = pytime.time() - start_time
             fit_result = out['fit_result']
-            msg = f"PolyFit calculation time {(pytime.time() - start_time):.2f} s"
-            print(msg)
-            add_to_log(master, msg)
             add_to_log(master, out['message'])
+            msg = f"PolyFit calculation time {calc_time:.2f} s"
+            add_to_log(master, msg)
         finally:
             overlay.destroy()
             master.config(cursor="")

@@ -38,8 +38,8 @@ def paramCheck(dialog, lofreq, hifreq, n_intervals):
         n = int(eval(n_intervals_s, {}, {}))
         if n < 1:
             raise Exception('Error', 'Number of intervals must be > 0')
-        if n > 100000:
-            raise Exception('Error', 'Number of intervals must be < 100000')
+        if n > 500000:
+            raise Exception('Error', 'Number of intervals must be < 500000')
         #print(low)
         #print(hi)
         #print(n)

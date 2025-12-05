@@ -45,8 +45,8 @@ def paramCheck(dialog,
             
         for i in range(n_of_periods):
             tD = int(eval(strVarDegrees[i].get().strip() or "0", {}, {}))
-            if tD < 0 or tD > 9:
-                raise Exception('Error', f'Trigonometric polynomial {i+1} degree must be between 0 and 9')
+            if tD < 0 or tD > 20:
+                raise Exception('Error', f'Trigonometric polynomial {i+1} degree must be between 0 and 20')
             tP = float(eval(strVarPeriods[i].get().strip() or "0", {}, {}))
             if tP < 0:
                 raise Exception('Error', f'Trigonometric polynomial {i+1} period must be >= 0')

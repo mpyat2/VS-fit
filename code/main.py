@@ -63,15 +63,18 @@ def doShutdown(master):
     if checkBackgroundTaskRunning(master): return
     shutdown(master)
 
-def waitOverlay(master, stopDftButton=False):
-    overlay = Frame(master, name="waitOverlay", bg="#cccccc")
+def waitOverlay(master, name="waitOverlay", stop_call=None):
+    overlay = Frame(master, name=name, bg="#cccccc")
     overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
-    if stopDftButton:
-        btn = Button(overlay, text="Stop DC DFT", command=lambda: dft.stop_task())
-        btn.place(relx=0.5, rely=0.6, anchor="center")
+    lbl = None
+    if stop_call is not None:
+        btn = Button(overlay, text="Stop", command=lambda: stop_call())
+        btn.place(relx=0.5, rely=0.0, anchor="n")
+        lbl = Label(overlay, text="Processing...", bg="#cccccc")
+        lbl.place(relx=0.5, rely=1.0, anchor="s")
     else:
         Label(overlay, text="Please wait...", bg="#c0c0c0").place(relx=0.5, rely=0.5, anchor="center")
-    return overlay
+    return overlay, lbl
 
 def plotData(master):
     def plot_input(ax):
@@ -221,13 +224,17 @@ def doPlotDftResult(master, plot_power, plot_frequency):
 
 def dft_callback(master, result, msg, action):
     if action == "started":
-        waitOverlay(master, True)
+        dft_callback.overlay, dft_callback.progressLbl = waitOverlay(master, "waitOverlay_dft", dft.stop_task)
         master.update()
         return
+    elif action == "progress":
+        if hasattr(dft_callback, "progressLbl") and dft_callback.progressLbl is not None:
+            dft_callback.progressLbl.config(text=msg)
+        return
     else:
-        overlay = master.nametowidget("waitOverlay")
-        if not overlay is None:
-            overlay.destroy()
+        if hasattr(dft_callback, "overlay") and dft_callback.overlay is not None:
+            dft_callback.overlay.destroy()
+            dft_callback.overlay = None
     global dft_result
     dft_result = result
     if msg is None:
@@ -299,7 +306,7 @@ def doPolyFit(master):
     try:
         master.focus_force()
         master.config(cursor="watch")
-        overlay = waitOverlay(master)
+        overlay, _ = waitOverlay(master)
         master.update()
         try:
             start_time = pytime.time()

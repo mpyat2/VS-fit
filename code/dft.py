@@ -9,7 +9,7 @@ result_queue = queue.Queue()  # worker → main communication
 
 # Translated from R (Rprogs.r) (with a tiny fix)
 # See https://www.aavso.org/software-directory, https://www.aavso.org/sites/default/files/software/Rcodes.zip
-def dcdft(time, mag, lowfreq, hifreq, n_intervals, mcv_mode=False):
+def dcdft(master, callback, time, mag, lowfreq, hifreq, n_intervals, mcv_mode=False):
     ndata = len(time)
     t_mean = np.mean(time)
     mag_var = np.var(mag)
@@ -42,7 +42,8 @@ def dcdft(time, mag, lowfreq, hifreq, n_intervals, mcv_mode=False):
         amp.append(np.sqrt(a1**2 + a2**2))
         power.append(np.var(X @ params))
         if (i + 1) % 1000 == 0:
-            print(f"{i + 1} of {n_intervals + 1} frequencies computed.")
+            #print(f"{i + 1} of {n_intervals + 1} frequencies computed.")
+            callback(master, None, f"{i + 1} of {n_intervals + 1} frequencies computed.", "progress")
         
     print(f"Finished: {n_intervals + 1} frequencies computed.")
     
@@ -62,9 +63,11 @@ def median_interval(times):
     # Compute the median
     return np.median(dt_nonzero)
 
-def worker(time, mag, lowfreq, hifreq, n_intervals):
+def worker(master, callback, time, mag, lowfreq, hifreq, n_intervals):
     try:
         result = dcdft(
+            master=master,
+            callback=callback,
             time=time,
             mag=mag,
             lowfreq=lowfreq,
@@ -104,7 +107,7 @@ def dcdft_async(master, callback, time, mag, lofreq, hifreq, n_intervals):
     stop_flag["stop"] = False  # reset stop flag
     threading.Thread(
         target=worker,
-        args=(time, mag, lofreq, hifreq, n_intervals),
+        args=(master, callback, time, mag, lofreq, hifreq, n_intervals),
         daemon=True
     ).start()
     callback(master, None, None, "started")

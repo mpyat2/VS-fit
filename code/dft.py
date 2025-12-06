@@ -23,7 +23,8 @@ def dcdft(master, callback, time, mag, lowfreq, hifreq, n_intervals, mcv_mode=Fa
     
     freq_step = (hifreq - lowfreq) / n_intervals
     for i in range(n_intervals + 1):
-        if stop_flag["stop"]: return None
+        if stop_flag["stop"]:
+            return None
         nu = lowfreq + i * freq_step
         freq.append(nu)
         per.append(1 / nu)
@@ -45,7 +46,7 @@ def dcdft(master, callback, time, mag, lowfreq, hifreq, n_intervals, mcv_mode=Fa
             #print(f"{i + 1} of {n_intervals + 1} frequencies computed.")
             callback(master, None, f"{i + 1} of {n_intervals + 1} frequencies computed.", "progress")
         
-    print(f"Finished: {n_intervals + 1} frequencies computed.")
+    #print(f"Finished: {n_intervals + 1} frequencies computed.")
     
     if mcv_mode:
         power = np.array(power) / mag_var
@@ -110,7 +111,7 @@ def dcdft_async(master, callback, time, mag, lofreq, hifreq, n_intervals):
         args=(master, callback, time, mag, lofreq, hifreq, n_intervals),
         daemon=True
     ).start()
+    stop_flag["time"] = pytime.time()    
     callback(master, None, None, "started")
     stop_flag["running"] = True
-    stop_flag["time"] = pytime.time()
     master.after(100, lambda: check_worker_result(master, callback))

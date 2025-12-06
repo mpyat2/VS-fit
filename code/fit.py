@@ -1,6 +1,12 @@
+import threading
+import queue
+import time as pytime
 import numpy as np
 import pandas as pd
 from scipy.optimize import minimize
+
+stop_flag = {"stop": False, "running": False, "time": 0.0}   # mutable for safe thread sharing
+result_queue = queue.Queue()  # worker → main communication
 
 # -------------------------
 # Inner linear fit (with covariances)
@@ -178,133 +184,189 @@ def print_linear_coefficients_and_amplitudes(printLog, N, X, alg_poly,
 # -------------------------
 # Outer optimizer with error estimates
 # -------------------------
-def optimize_periods_with_errors(time, mag,
+def optimize_periods_with_errors(master, callback,
+                                 time, mag,
                                  alg_poly,
                                  initial_periods,
                                  degrees,
                                  optimize_flags,
+                                 compute_bootstrap,
                                  method='Nelder-Mead',
                                  maxiter=2000, xtol=1e-8, ftol=1e-8,
-                                 compute_bootstrap=False, n_bootstrap=200):
-    """
-    Outer nonlinear optimization of periods (returns error estimates).
-    """
-
-    log_message = ""
-    
-    def printLog(msg=""):
-        print(msg)
-        nonlocal log_message
-        log_message += f"{msg}\n"
-
-    # Initial periods
-    print_initial_periods(printLog, initial_periods)
-
-    # The period_indices list contains indices of poriods to be optimized
-    period_indices = []    
-    # Periods to optimize
-    for i in range(len(optimize_flags)):
-        if optimize_flags[i]:
-            period_indices.append(i)
-
-    if len(period_indices) == 0:
-        # nothing to optimize -> just return linear fit results + cov
-        rss, fitted, coeffs, X = polyfit_fixed_periods(time, mag, 
-                                                       alg_poly, 
-                                                       initial_periods, 
-                                                       degrees, 
-                                                       True)
-        N = len(mag)
-        p = len(coeffs)
-        dof = max(N - p, 1)
-        sigma2 = rss / dof
-        print_linear_coefficients_and_amplitudes(printLog, N, X, alg_poly, initial_periods, degrees, [], [], coeffs, rss, sigma2, dof)
-        return {
-            'fitted': fitted, 
-            'message': log_message
-        }
-
-    # initial guess vector for the optimizer
-    x0 = np.array([initial_periods[i] for i in period_indices], dtype=float)
-
-    def objective(period_values):
-        # update param vector
-        periods = initial_periods.copy()
-        for idx, val in zip(period_indices, period_values):
-            periods[idx] = float(val)
-        rss, _, _ = polyfit_fixed_periods(time, mag, alg_poly, periods, degrees, False)
-        return rss
-
-    # run optimizer
-    #print("Optimizer...")
-    result = minimize(objective, x0, method=method,
-                      options={'maxiter': maxiter, 'xatol': xtol, 'fatol': ftol, 'disp': True})
-
-    #print(result)
-    best_period_values = result.x
-    # assemble full parameter vector with best periods plugged
-    best_periods = initial_periods.copy()
-    #print(best_periods)
-    #print(best_period_values)
-    for idx, val in zip(period_indices, best_period_values):
-        best_periods[idx] = float(val)
-
-    #print("Before final linear fit...")
-    # final linear fit at best params (and get X, coeffs)
-    rss, fitted, coeffs, X = polyfit_fixed_periods(time, mag, 
-                                                   alg_poly,
-                                                   best_periods,
-                                                   degrees,
-                                                   True)
-    N = len(mag)
-    p_lin = len(coeffs)
-    p_tot = p_lin + len(period_indices)
-    dof = max(N - p_tot, 1)   # conservative dof include nonlinear params
-    sigma2 = rss / dof
-
-    # Now compute Jacobian J of residuals wrt periods (finite differences)
-    J = numerical_jacobian_residuals(time, mag, alg_poly, best_periods, degrees, period_indices)
-
-    # This is ChatGPT comments!
-    # Gauss-Newton approximation: Hessian ≈ 2 * J^T J, but covariance for periods:
-    # Cov(periods) ≈ sigma2 * (J^T J)^{-1}
-    JTJ = J.T @ J
-    # handle possible singularity
+                                 n_bootstrap=200):
+    stop_flag["time"] = pytime.time()
+    callback(master, None, "Starting period optimization...", "fit_started")
     try:
-        cov_periods = sigma2 * np.linalg.inv(JTJ)
-        se_periods = np.sqrt(np.diag(cov_periods))
-    except Exception:
-        cov_periods = None
-        se_periods = None
-        printLog("Warning: J^T J is singular — cannot compute period covariance via Gauss-Newton.")
+        log_message = ""
+        
+        def printLog(msg=""):
+            print(msg)
+            nonlocal log_message
+            log_message += f"{msg}\n"
 
-    # Print results
-    print_optimized_periods(printLog, best_periods, se_periods, period_indices)
+        # Initial periods
+        print_initial_periods(printLog, initial_periods)
 
-    print_linear_coefficients_and_amplitudes(printLog, N, X, alg_poly, initial_periods, degrees, best_periods, period_indices, coeffs, rss, sigma2, dof)
+        # The period_indices list contains indices of poriods to be optimized
+        period_indices = []    
+        # Periods to optimize
+        for i in range(len(optimize_flags)):
+            if optimize_flags[i]:
+                period_indices.append(i)
 
-    output = {
-        'fitted': fitted,
-        'message': log_message
-    }
+        if len(period_indices) == 0:
+            # nothing to optimize -> just return linear fit results + cov
+            rss, fitted, coeffs, X = polyfit_fixed_periods(time, mag, 
+                                                        alg_poly, 
+                                                        initial_periods, 
+                                                        degrees, 
+                                                        True)
+            N = len(mag)
+            p = len(coeffs)
+            dof = max(N - p, 1)
+            sigma2 = rss / dof
+            print_linear_coefficients_and_amplitudes(printLog, N, X, alg_poly, initial_periods, degrees, [], [], coeffs, rss, sigma2, dof)
+            fit_result = pd.DataFrame({
+                'Time': time,
+                'Mag': mag,
+                'Fit': fitted,
+            })
+            printLog(f"Calculation time {(pytime.time() - stop_flag['time']):.2f} s")
+            callback(master, fit_result, log_message, "finished")
+            return
+
+        # initial guess vector for the optimizer
+        x0 = np.array([initial_periods[i] for i in period_indices], dtype=float)
+
+        def objective(period_values):
+            # update param vector
+            periods = initial_periods.copy()
+            for idx, val in zip(period_indices, period_values):
+                periods[idx] = float(val)
+            rss, _, _ = polyfit_fixed_periods(time, mag, alg_poly, periods, degrees, False)
+            return rss
+
+        # run optimizer
+        #print("Optimizer...")
+        result = minimize(objective, x0, method=method, options={'maxiter': maxiter, 'xatol': xtol, 'fatol': ftol, 'disp': True})
+
+        #print(result)
+        best_period_values = result.x
+        # assemble full parameter vector with best periods plugged
+        best_periods = initial_periods.copy()
+        #print(best_periods)
+        #print(best_period_values)
+        for idx, val in zip(period_indices, best_period_values):
+            best_periods[idx] = float(val)
+
+        # final linear fit at best params (and get X, coeffs)
+        rss, fitted, coeffs, X = polyfit_fixed_periods(time, mag, 
+                                                    alg_poly,
+                                                    best_periods,
+                                                    degrees,
+                                                    True)
+        N = len(mag)
+        p_lin = len(coeffs)
+        p_tot = p_lin + len(period_indices)
+        dof = max(N - p_tot, 1)   # conservative dof include nonlinear params
+        sigma2 = rss / dof
+
+        # Now compute Jacobian J of residuals wrt periods (finite differences)
+        J = numerical_jacobian_residuals(time, mag, alg_poly, best_periods, degrees, period_indices)
+
+        # This is ChatGPT comments!
+        # Gauss-Newton approximation: Hessian ≈ 2 * J^T J, but covariance for periods:
+        # Cov(periods) ≈ sigma2 * (J^T J)^{-1}
+        JTJ = J.T @ J
+        # handle possible singularity
+        try:
+            cov_periods = sigma2 * np.linalg.inv(JTJ)
+            se_periods = np.sqrt(np.diag(cov_periods))
+        except Exception:
+            cov_periods = None
+            se_periods = None
+            printLog("Warning: J^T J is singular — cannot compute period covariance via Gauss-Newton.")
+
+        # Print results
+        print_optimized_periods(printLog, best_periods, se_periods, period_indices)
+
+        print_linear_coefficients_and_amplitudes(printLog, N, X, alg_poly, initial_periods, degrees, best_periods, period_indices, coeffs, rss, sigma2, dof)
+
+        fit_result = pd.DataFrame({
+            'Time': time,
+            'Mag': mag,
+            'Fit': fitted,
+        })
+        printLog(f"Calculation time {(pytime.time() - stop_flag['time']):.2f} s")
+        callback(master, fit_result, log_message, "finished")
+        log_message = ""
+    except Exception as e:
+        #printLog(f"Period optimization error: {e}")
+        callback(master, None, f"Period optimization error: {e}", "error")
+        return
 
     # Optional: bootstrap for period uncertainties (more robust)
     if compute_bootstrap:
-        printLog("Running bootstrap...")
+        stop_flag["stop"] = False  # reset stop flag
+        threading.Thread(
+            target=worker,
+            args=(master, callback,
+                  time, mag, fitted, 
+                  alg_poly,
+                  initial_periods, degrees, 
+                  best_period_values, period_indices, 
+                  method, maxiter, xtol, ftol, n_bootstrap),
+            daemon=True
+        ).start()
+        stop_flag["time"] = pytime.time()
+        callback(master, None, "Starting bootstrap...", "bootstrap_started")
         print("(this may take a while)...")
-        boot_se = compute_bootstrap_period_errors(time, mag, fitted, 
-                                                  alg_poly,
-                                                  initial_periods, degrees, 
-                                                  best_period_values, period_indices, 
-                                                  method, maxiter, xtol, ftol, n_bootstrap)
-        printLog(f"Bootstrap periods standard errors: {boot_se}")
-        #output['bootstrap_period_se'] = boot_se
-        #output['bootstrap_periods'] = boot_periods
-        output['message'] = log_message
+        stop_flag["running"] = True
+        master.after(100, lambda: check_worker_result(master, callback))
 
-    return output
+def worker(master, callback, 
+           time, mag, fitted, 
+           alg_poly,
+           initial_periods, degrees, 
+           best_period_values, period_indices, 
+           method, maxiter, xtol, ftol, n_bootstrap):
+    try:
+        boot_se = compute_bootstrap_period_errors(
+            master, callback, 
+            time, mag, fitted, 
+            alg_poly,
+            initial_periods, degrees, 
+            best_period_values, period_indices, 
+            method, maxiter, xtol, ftol, n_bootstrap
+        )
+        boot_result = {"data": boot_se, "error": None}
+    except Exception as e:
+        boot_result = {"data": None, "error": str(e)}
+    result_queue.put(boot_result)
 
-def compute_bootstrap_period_errors(time, mag, fitted, 
+def check_worker_result(master, callback):
+    try:
+        boot_result = result_queue.get_nowait()
+    except queue.Empty:
+        # Worker still running — keep polling
+        master.after(100, lambda: check_worker_result(master, callback))
+        return
+    # Worker finished:
+    stop_flag["running"] = False
+    if boot_result is None:
+        callback(master, None, "Unknown error", "error")
+        return
+    if boot_result["data"] is None:
+        if boot_result["error"] is not None:
+            callback(master, None, "Error: " + boot_result["error"], "error")
+        else:
+            callback(master, None, "Bootstrap was stopped.", "stopped")
+    else:
+        msg = f"Calculation time {(pytime.time() - stop_flag['time']):.2f} s"
+        callback(master, boot_result["data"], msg, "bootstrap_finished")
+
+def compute_bootstrap_period_errors(master, callback,
+                                    time, mag, fitted, 
                                     alg_poly,
                                     initial_periods, degrees, 
                                     best_period_values, period_indices, 
@@ -312,6 +374,8 @@ def compute_bootstrap_period_errors(time, mag, fitted,
     boot_periods = []
     rng = np.random.default_rng(seed=12345)
     for b in range(n_bootstrap):
+        if stop_flag["stop"]:
+            return None
         # sample residuals (residual bootstrap)
         # generate bootstrap mag = fitted + resampled residuals
         resampled_r = rng.choice((mag - fitted), size=len(mag), replace=True)
@@ -328,17 +392,21 @@ def compute_bootstrap_period_errors(time, mag, fitted,
                          options={'maxiter': maxiter, 'xatol': xtol, 'fatol': ftol, 'disp': False})
         boot_periods.append(res_b.x)
         if (b + 1) % 10 == 0:
-            print(f"{b + 1} of {n_bootstrap} bootstrap periods calculated.")
-    print(f"Finished: {n_bootstrap} bootstrap periods calculated.")
+            #print(f"{b + 1} of {n_bootstrap} bootstrap periods calculated.")
+            callback(master, None, f"{b + 1} of {n_bootstrap} bootstrap periods calculated.", "progress")        
+    #print(f"Finished: {n_bootstrap} bootstrap periods calculated.")
     boot_periods = np.array(boot_periods)
     # compute bootstrap std dev for each optimized period
     boot_se = np.std(boot_periods, axis=0, ddof=1)
     return boot_se
 
+def stop_task():
+    stop_flag["stop"] = True
+
 # -------------------------
 # Wrapper
 # -------------------------
-def polyfit(time, mag, alg_poly, periods, degrees, optimize_flags, **kwargs):
+def polyfit(master, callback, time, mag, alg_poly, periods, degrees, optimize_flags, compute_bootstrap):
     normalized_periods = []
     normalized_degrees = []
     normalized_optimize_flags = []
@@ -348,15 +416,10 @@ def polyfit(time, mag, alg_poly, periods, degrees, optimize_flags, **kwargs):
             normalized_degrees.append(degree)
             normalized_optimize_flags.append(optimize)
     
-    out = optimize_periods_with_errors(time, mag, 
-                                       alg_poly, 
-                                       normalized_periods, 
-                                       normalized_degrees, 
-                                       normalized_optimize_flags,
-                                       **kwargs)
-    fit_result = pd.DataFrame({
-        'Time': time,
-        'Mag': mag,
-        'Fit': out['fitted'],
-    })
-    return {'fit_result': fit_result, 'message': out['message']}
+    optimize_periods_with_errors(master, callback,
+                                 time, mag, 
+                                 alg_poly, 
+                                 normalized_periods, 
+                                 normalized_degrees, 
+                                 normalized_optimize_flags,
+                                 compute_bootstrap)

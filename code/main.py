@@ -1,6 +1,7 @@
 import os
 import sys
 import webbrowser
+import threading
 from tkinter import Tk, Frame, Label, Menu, Button, PhotoImage, filedialog, messagebox
 from log_window import LogWindow
 ##
@@ -45,14 +46,15 @@ def add_to_log(master, text):
         messagebox.showinfo(None, "Error: " + str(e), parent=master)
 
 def checkBackgroundTaskRunning(master):
-    if dft.stop_flag["running"]:
+    if dft.stop_flag["running"] or fit.stop_flag["running"]:
         messagebox.showinfo("Please wait", "Background task is still running. Please wait until it is finished.", parent=master)
         return True
     return False
 
 def shutdown(master):
     # silent check
-    if dft.stop_flag["running"]: return
+    if dft.stop_flag["running"] or fit.stop_flag["running"]:
+        return
     try:
         master.quit() # stop mainloop if running: required in Spyder
     except:
@@ -223,6 +225,10 @@ def doPlotDftResult(master, plot_power, plot_frequency):
     plotDftResult(master, plot_power, plot_frequency)
 
 def dft_callback(master, result, msg, action):
+    # thread-safe callback
+    if threading.current_thread() is not threading.main_thread():
+        master.after(0, dft_callback, master, result, msg, action) # arguments are frozen here!
+        return
     if action == "started":
         dft_callback.overlay, dft_callback.progressLbl = waitOverlay(master, "waitOverlay_dft", dft.stop_task)
         master.update()
@@ -283,9 +289,75 @@ def doDCDFT(master):
     if plotWind1 is not None:
         plotWind1.show(None)        
     dft_result = None
+    add_to_log(master, "")
     add_to_log(master, "DC DFT started.")
     # Background task
     dft.dcdft_async(master, dft_callback, t, m, dftParamDialog.param_lofreq, dftParamDialog.param_hifreq, dftParamDialog.param_n_intervals)
+
+def fit_callback(master, result, msg, action):
+    # thread-safe callback
+    if threading.current_thread() is not threading.main_thread():
+        master.after(0, fit_callback, master, result, msg, action) # arguments are frozen here!
+        return
+    if action == "fit_started":
+        fit_callback.static_overlay, _ = waitOverlay(master, "waitOverlay_fit1", None)
+        master.update()
+        return
+    if action == "bootstrap_started":
+        add_to_log(master, "Bootstrap started.")
+        if hasattr(fit_callback, "static_overlay") and fit_callback.static_overlay is not None:
+            fit_callback.static_overlay.destroy()
+            fit_callback.static_overlay = None
+        fit_callback.overlay, fit_callback.progressLbl = waitOverlay(master, "waitOverlay_fit_bootstrap", fit.stop_task)
+        master.update()
+        return
+    elif action == "progress":
+        if hasattr(fit_callback, "progressLbl") and fit_callback.progressLbl is not None:
+            fit_callback.progressLbl.config(text=msg)
+        return
+    
+    if hasattr(fit_callback, "static_overlay") and fit_callback.static_overlay is not None:
+        fit_callback.static_overlay.destroy()
+        fit_callback.static_overlay = None
+    if hasattr(fit_callback, "progressLbl") and fit_callback.progressLbl is not None:
+        fit_callback.progressLbl = None
+    if hasattr(fit_callback, "overlay") and fit_callback.overlay is not None:
+        fit_callback.overlay.destroy()
+        fit_callback.overlay = None
+
+    if action == "finished":
+        global fit_result
+        fit_result = result
+        if msg is None:
+            msg = "No message!"
+        add_to_log(master, msg)
+        if fit_result is not None:
+            plotFitResult(master)
+        else:
+            messagebox.showinfo("Fit", "No result!", parent=master)
+        return
+    if action == "bootstrap_finished":
+        if msg is None:
+            msg = "No message!"
+        if result is not None:
+            add_to_log(master, "")
+            add_to_log(master, f"Bootstrap periods standard errors: {result}")
+            add_to_log(master, "")
+            add_to_log(master, msg)
+        else:
+            add_to_log(master, "")
+            add_to_log(master, msg)
+            messagebox.showinfo("Fit", "No bootstrap result!", parent=master)
+        return
+    if action == "error":
+        if msg is None:
+            msg = "Unknown error"
+        add_to_log(master, msg)
+        messagebox.showinfo("Fit", msg, parent=master)
+        return
+    if msg is None:
+        msg = "No message!"
+    add_to_log(master, msg)
 
 def doPolyFit(master):
     if checkBackgroundTaskRunning(master): return
@@ -295,6 +367,7 @@ def doPolyFit(master):
     if input_data is None:
         messagebox.showinfo("Approximation", "No data file open", parent=master)
         return;
+
     fitParamDialog.fitParameters(master)
     if not fitParamDialog.param_defined:
         return
@@ -304,33 +377,16 @@ def doPolyFit(master):
     fit_result = None
     t = input_data['Time'].to_numpy()
     m = input_data['Mag'].to_numpy()
+    add_to_log(master, "")
     add_to_log(master, "PolyFit started.")
-    try:
-        master.focus_force()
-        master.config(cursor="watch")
-        overlay, _ = waitOverlay(master)
-        master.update()
-        try:
-            start_time = pytime.time()
-            out = fit.polyfit(t, m,
-                              fitParamDialog.param_algDegree,
-                              fitParamDialog.param_periods,
-                              fitParamDialog.param_degrees,
-                              fitParamDialog.param_optFlags,
-                              compute_bootstrap=fitParamDialog.param_bootstrapForErrors)
-            calc_time = pytime.time() - start_time
-            fit_result = out['fit_result']
-            add_to_log(master, out['message'])
-            msg = f"PolyFit calculation time {calc_time:.2f} s"
-            add_to_log(master, msg)
-        finally:
-            overlay.destroy()
-            master.config(cursor="")
-    except Exception as e:
-        messagebox.showinfo(None, "Error: " + str(e), parent=master)
-        return
-    plotFitResult(master)
-
+    # Partially -- background task
+    fit.polyfit(master, fit_callback, 
+                t, m,
+                fitParamDialog.param_algDegree,
+                fitParamDialog.param_periods,
+                fitParamDialog.param_degrees,
+                fitParamDialog.param_optFlags,
+                fitParamDialog.param_bootstrapForErrors)
 
 def doDetrend(master):
     # Replace input data with detrended one: like opening a new file

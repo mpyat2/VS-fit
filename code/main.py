@@ -232,6 +232,8 @@ def dft_callback(master, result, msg, action):
             dft_callback.progressLbl.config(text=msg)
         return
     else:
+        if hasattr(dft_callback, "progressLbl") and dft_callback.progressLbl is not None:
+            dft_callback.progressLbl = None
         if hasattr(dft_callback, "overlay") and dft_callback.overlay is not None:
             dft_callback.overlay.destroy()
             dft_callback.overlay = None

@@ -292,36 +292,48 @@ def optimize_periods_with_errors(time, mag,
     if compute_bootstrap:
         printLog("Running bootstrap...")
         print("(this may take a while)...")
-        boot_periods = []
-        rng = np.random.default_rng(seed=12345)
-        for b in range(n_bootstrap):
-            # sample residuals (residual bootstrap)
-            # generate bootstrap mag = fitted + resampled residuals
-            resampled_r = rng.choice((mag - fitted), size=N, replace=True)
-            mag_b = fitted + resampled_r
-            # re-optimize periods starting from best_period_values (fast)
-            def obj_bpv(period_values):
-                periods_b = initial_periods.copy()
-                for idx, val in zip(period_indices, period_values):
-                    periods_b[idx] = float(val)
-                rss_b, _, _ = polyfit_fixed_periods(time, mag_b, alg_poly, periods_b, degrees, False)
-                return rss_b
-            #
-            res_b = minimize(obj_bpv, best_period_values, method=method,
-                             options={'maxiter': maxiter, 'xatol': xtol, 'fatol': ftol, 'disp': False})
-            boot_periods.append(res_b.x)
-            if (b + 1) % 10 == 0:
-                print(f"{b + 1} of {n_bootstrap + 1} bootstrap periods calculated.")
-        print(f"Finished: {n_bootstrap + 1} bootstrap periods calculated.")
-        boot_periods = np.array(boot_periods)
-        # compute bootstrap std dev for each optimized period
-        boot_se = np.std(boot_periods, axis=0, ddof=1)
+        boot_se = compute_bootstrap_period_errors(time, mag, fitted, 
+                                                  alg_poly,
+                                                  initial_periods, degrees, 
+                                                  best_period_values, period_indices, 
+                                                  method, maxiter, xtol, ftol, n_bootstrap)
         printLog(f"Bootstrap periods standard errors: {boot_se}")
         #output['bootstrap_period_se'] = boot_se
         #output['bootstrap_periods'] = boot_periods
         output['message'] = log_message
 
     return output
+
+def compute_bootstrap_period_errors(time, mag, fitted, 
+                                    alg_poly,
+                                    initial_periods, degrees, 
+                                    best_period_values, period_indices, 
+                                    method, maxiter, xtol, ftol, n_bootstrap):
+    boot_periods = []
+    rng = np.random.default_rng(seed=12345)
+    for b in range(n_bootstrap):
+        # sample residuals (residual bootstrap)
+        # generate bootstrap mag = fitted + resampled residuals
+        resampled_r = rng.choice((mag - fitted), size=len(mag), replace=True)
+        mag_b = fitted + resampled_r
+        # re-optimize periods starting from best_period_values (fast)
+        def obj_bpv(period_values):
+            periods_b = initial_periods.copy()
+            for idx, val in zip(period_indices, period_values):
+                periods_b[idx] = float(val)
+            rss_b, _, _ = polyfit_fixed_periods(time, mag_b, alg_poly, periods_b, degrees, False)
+            return rss_b
+        #
+        res_b = minimize(obj_bpv, best_period_values, method=method,
+                         options={'maxiter': maxiter, 'xatol': xtol, 'fatol': ftol, 'disp': False})
+        boot_periods.append(res_b.x)
+        if (b + 1) % 10 == 0:
+            print(f"{b + 1} of {n_bootstrap} bootstrap periods calculated.")
+    print(f"Finished: {n_bootstrap} bootstrap periods calculated.")
+    boot_periods = np.array(boot_periods)
+    # compute bootstrap std dev for each optimized period
+    boot_se = np.std(boot_periods, axis=0, ddof=1)
+    return boot_se
 
 # -------------------------
 # Wrapper

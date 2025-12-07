@@ -18,9 +18,8 @@ import phasePlot
 
 log_window = None
 
-plotWind0 = None # Input data
+plotWind0 = None # Input data and approximation
 plotWind1 = None # DFT result
-plotWind2 = None # Fit result
 
 input_data = None
 dft_result = None
@@ -80,6 +79,8 @@ def plotData(master):
         ax.set_xlabel('Time')
         ax.set_ylabel('Magnitude')
         ax.grid(True, linestyle='--', color='gray', alpha=0.3)
+        if fit_result is not None:
+            ax.plot(fit_result['Time'], fit_result['Fit'], 'k.')
     global plotWind0
     if plotWind0 is None: 
         plotWind0 =  plotWind.PlotWindow(master, title="Input Data")
@@ -108,23 +109,6 @@ def plotDftResult(master, plot_power, plot_frequency):
         plotWind1 =  plotWind.PlotWindow(master, title="Periodogram")
     plotWind1.show(plot_dft)
 
-def plotFitResult(master):
-    def plot_fit(ax):
-        global fit_result    
-        ax.plot(fit_result['Time'], fit_result['Mag'], '.', color='royalblue')
-        ax.plot(fit_result['Time'], fit_result['Fit'], 'k.')
-        y_min = min(min(fit_result['Mag']), min(fit_result['Fit']))
-        y_max = max(max(fit_result['Mag']), max(fit_result['Fit']))
-        ax.set_ylim(y_max, y_min)
-        ax.set_title('Approximation')
-        ax.set_xlabel('Time')
-        ax.set_ylabel('Magnitude')
-        ax.grid(True, linestyle='--', color='gray', alpha=0.3)
-    global plotWind2        
-    if plotWind2 is None: 
-        plotWind2 =  plotWind.PlotWindow(master, title="Approximation")
-    plotWind2.show(plot_fit)
-
 def doOpenFile(master):
     if checkBackgroundTaskRunning(master): return
     global input_data
@@ -135,8 +119,6 @@ def doOpenFile(master):
         try:
             global plotWind0
             global plotWind1
-            global plotWind2
-            if plotWind2 is not None: plotWind2.show(None)
             if plotWind1 is not None: plotWind1.show(None)
             if plotWind0 is not None: plotWind0.show(None)
             dft_result = None; dftParamDialog.params_initialized = False
@@ -191,13 +173,14 @@ def doPlotData(master):
 def doPlotFolded(master):
     if checkBackgroundTaskRunning(master): return
     global input_data
+    global fit_result
     if input_data is None:
         messagebox.showinfo("Phase Plot", "No data file open", parent=master)
         return;
     global plotWind0
     if plotWind0 is None: 
         plotWind0 = plotWind.PlotWindow(master, title="Input Data")
-    phasePlot.plotFolded(master, plotWind0, input_data)
+    phasePlot.plotFolded(master, plotWind0, input_data, fit_result)
 
 def doPlotDftResult(master, plot_power, plot_frequency):
     if checkBackgroundTaskRunning(master): return
@@ -297,7 +280,7 @@ def fit_callback(master, result, msg, action):
             msg = "No message!"
         add_to_log(master, msg)
         if fit_result is not None:
-            plotFitResult(master)
+            plotData(master)
         else:
             messagebox.showinfo("Fit", "No result!", parent=master)
         return
@@ -336,15 +319,13 @@ def doPolyFit(master):
     fitParamDialog.fitParameters(master)
     if not fitParamDialog.param_defined:
         return
-    global plotWind2
-    if plotWind2 is not None:
-        plotWind2.show(None)        
     fit_result = None
+    plotData(master)
     t = input_data['Time'].to_numpy()
     m = input_data['Mag'].to_numpy()
     add_to_log(master, "")
     add_to_log(master, "PolyFit started.")
-    # Partially -- background task
+    # Partially background task
     fit.polyfit(master, fit_callback, 
                 t, m,
                 fitParamDialog.param_algDegree,
@@ -369,12 +350,10 @@ def doDetrend(master):
     
     global plotWind0
     global plotWind1
-    global plotWind2
-    if plotWind2 is not None: plotWind2.show(None)
     if plotWind1 is not None: plotWind1.show(None)
     if plotWind0 is not None: plotWind0.show(None)
     input_data = dataio.create_frame(fit_result["Time"], fit_result["Mag"] - fit_result["Fit"])
-    dft_result = None; dftParamDialog.params_initialized = False
+    dft_result = None; #dftParamDialog.params_initialized = False
     fit_result = None
     add_to_log(master, "")
     add_to_log(master, "Input data replaced with detrended one.")

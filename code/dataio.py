@@ -27,7 +27,7 @@ def load_data(fileName):
                 # SPACE mode: collapse multiple spaces → split
                 parts = re.split(r'\s+', line)
 
-            out_lines.append(','.join(parts))  # normalize to CSV with commas
+            out_lines.append('\t'.join(parts))  # normalize to TSV
 
     # join preprocessed lines to a single text buffer
     text = "\n".join(out_lines)
@@ -36,7 +36,9 @@ def load_data(fileName):
     return pd.read_csv(
         io.StringIO(text),
         names=NAMES,
-        dtype={'Time': 'float64', 'Mag': 'float64'},
+        dtype=DTYPE,
+        usecols=[0, 1],
+        sep='\t',
         header=None
     )
 

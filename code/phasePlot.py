@@ -43,13 +43,14 @@ def phaseParamApply(phaseDialog, period, epoch, plotWindow, input_data, fit_resu
 
         def plot_folded(ax):
             ax.plot(std_phase2, m2, '.', color='royalblue', label='Input Data')
-            ax.set_ylim(max(input_data['Mag']), min(input_data['Mag']))
+            #ax.set_ylim(max(input_data['Mag']), min(input_data['Mag']))
             ax.set_title(f'Epoch {epoch_v}, Period {period_v}')
             ax.set_xlabel('Phase')
             ax.set_ylabel('Magnitude')
             ax.grid(True, linestyle='--', color='gray', alpha=0.3)
             if fit_result is not None:
                 ax.plot(std_phase_fit2, m_fit2, 'k.', label='Approximation')
+            ax.invert_yaxis()
             # Make space for the legend, put it below the X axis
             ax.figure.subplots_adjust(bottom=0.15)
             ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.12), ncol=2)

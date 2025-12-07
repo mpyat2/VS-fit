@@ -73,14 +73,17 @@ def waitOverlay(master, name="waitOverlay", stop_call=None):
 
 def plotData(master):
     def plot_input(ax):
-        ax.plot(input_data['Time'], input_data['Mag'], '.', color='royalblue')
+        ax.plot(input_data['Time'], input_data['Mag'], '.', color='royalblue', label='Input Data')
         ax.set_ylim(max(input_data["Mag"]), min(input_data["Mag"]))
-        ax.set_title('Input')
+        #ax.set_title('Input')
         ax.set_xlabel('Time')
         ax.set_ylabel('Magnitude')
         ax.grid(True, linestyle='--', color='gray', alpha=0.3)
         if fit_result is not None:
-            ax.plot(fit_result['Time'], fit_result['Fit'], 'k.')
+            ax.plot(fit_result['Time'], fit_result['Fit'], 'k.', label='Approximation')
+        # Make space for the legend, put it below the X axis
+        ax.figure.subplots_adjust(bottom=0.15)
+        ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.12), ncol=2)
     global plotWind0
     if plotWind0 is None: 
         plotWind0 =  plotWind.PlotWindow(master, title="Input Data")

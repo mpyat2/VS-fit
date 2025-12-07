@@ -9,18 +9,12 @@ import matplotlib
 matplotlib.use("TkAgg")
 import plotWind
 ##
-import pandas as pd
-import pathlib
-import time as pytime
+import dataio
 import dft
 import dftParamDialog
 import fit
 import fitParamDialog
 import phasePlot
-
-## Data file spec (no header row, tab-separated)
-NAMES = ['Time', 'Mag']
-DTYPE = {'Time': 'float64', 'Mag': 'float64'}
 
 log_window = None
 
@@ -148,10 +142,7 @@ def doOpenFile(master):
             dft_result = None; dftParamDialog.params_initialized = False
             input_data = None
             fit_result = None
-            input_data = pd.read_csv(fileName, 
-                                     comment='#', skip_blank_lines=True,
-                                     names=NAMES, dtype=DTYPE, header=None, usecols=[0, 1],
-                                     sep=r'\s+', engine='python')
+            input_data = dataio.load_data(fileName)
         except Exception as e:
             input_data = None
             messagebox.showinfo(None, "Error: " + str(e), parent=master)
@@ -160,15 +151,6 @@ def doOpenFile(master):
         add_to_log(master, f"{fileName} loaded.")
         add_to_log(master, "")
         plotData(master)
-
-def save_result(fileName, data):
-    filePath = pathlib.Path(fileName)
-    if filePath.suffix == "":
-        fileName += ".tsv"
-    with open(fileName, 'w', newline='') as f:
-        # write header line with '#'
-        f.write('#' + '\t'.join(data.columns) + '\n')
-        data.to_csv(f, index=False, header=False, sep='\t')
 
 def doSaveDftResult(master):
     if checkBackgroundTaskRunning(master): return
@@ -179,7 +161,7 @@ def doSaveDftResult(master):
     fileName = filedialog.asksaveasfilename(parent=master, filetypes=[('Tab-separated Files (*.tsv)', '*.tsv')])
     if fileName:
         try:
-            save_result(fileName, dft_result)
+            dataio.save_result(fileName, dft_result)
         except Exception as e:
             messagebox.showinfo(None, "Error: " + str(e), parent=master)
             return
@@ -191,9 +173,9 @@ def doSaveFitResult(master):
         messagebox.showinfo("Approximation", "No resulted data", parent=master)
         return;
     fileName = filedialog.asksaveasfilename(parent=master, filetypes=[('Tab-separated Files (*.tsv)', '*.tsv')])
-    if fileName :
+    if fileName:
         try:
-            save_result(fileName, fit_result)
+            dataio.save_result(fileName, fit_result)
         except Exception as e:
             messagebox.showinfo(None, "Error: " + str(e), parent=master)
             return
@@ -391,10 +373,7 @@ def doDetrend(master):
     if plotWind2 is not None: plotWind2.show(None)
     if plotWind1 is not None: plotWind1.show(None)
     if plotWind0 is not None: plotWind0.show(None)
-    input_data = pd.DataFrame({
-        "Time": fit_result["Time"],
-        "Mag": fit_result["Mag"] - fit_result["Fit"]
-    })
+    input_data = dataio.create_frame(fit_result["Time"], fit_result["Mag"] - fit_result["Fit"])
     dft_result = None; dftParamDialog.params_initialized = False
     fit_result = None
     add_to_log(master, "")

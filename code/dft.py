@@ -26,6 +26,8 @@ def dcdft(master, callback, time, mag, lowfreq, hifreq, n_intervals, mcv_mode=Fa
         if stop_flag["stop"]:
             return None
         nu = lowfreq + i * freq_step
+        if nu <= 0:
+            continue
         freq.append(nu)
         per.append(1 / nu)
         # Calculate cos and sin (c1 and s1) of the time-sequence for the trial frequency
@@ -55,14 +57,6 @@ def dcdft(master, callback, time, mag, lowfreq, hifreq, n_intervals, mcv_mode=Fa
         
     dcd = pd.DataFrame({'freq': freq, 'per': per, 'amp': amp, 'pow': power})
     return dcd
-
-def median_interval(times):
-    # Compute successive differences
-    dt = np.diff(np.sort(times))
-    # Keep only positive (or non-zero) intervals
-    dt_nonzero = dt[dt != 0]
-    # Compute the median
-    return np.median(dt_nonzero)
 
 def worker(master, callback, time, mag, lowfreq, hifreq, n_intervals):
     try:

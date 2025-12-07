@@ -265,24 +265,7 @@ def doDCDFT(master):
     t = input_data['Time'].to_numpy()
     m = input_data['Mag'].to_numpy()
     
-    if not dftParamDialog.params_initialized:
-        dftParamDialog.params_initialized = True
-        interval = dft.median_interval(t)
-        if interval > 0: # False also for 'nan'
-            hifreq = 1.0 / interval / 2.0; # Approximate Nyquist
-            if hifreq > 50.0: hifreq = 50.0
-            time_interval = max(t) - min(t)
-            recommended_freq_resolution = 0.05 / time_interval
-            lofreq = recommended_freq_resolution
-            if lofreq < 1.0: lofreq = round(lofreq, 6)
-            if lofreq < 0.000001: lofreq = 0.000001
-            if hifreq <= lofreq:
-                hifreq = lofreq + 100 * recommended_freq_resolution
-            dftParamDialog.param_lofreq = lofreq
-            dftParamDialog.param_hifreq = hifreq
-            dftParamDialog.param_n_intervals = round((hifreq - lofreq) / recommended_freq_resolution) + 1
-    
-    dftParamDialog.dftParameters(master)
+    dftParamDialog.dftParameters(master, t)
     if not dftParamDialog.param_defined:
         return
     global plotWind1

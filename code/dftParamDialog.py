@@ -1,5 +1,6 @@
-import numpy as np
 from tkinter import Toplevel, Frame, Label, Entry, Button, StringVar, messagebox
+import numpy as np
+from utils import safe_eval
 
 param_defined = False
 param_lofreq = 0.0
@@ -27,7 +28,7 @@ def paramCheck(dialog, lofreq, hifreq, n_intervals):
     #hi = 0.0
     try:
         low, hi = checkLoHi(lofreq, hifreq)
-        n = int(eval(n_intervals_s, {}, {}))
+        n = int(safe_eval(n_intervals_s))
         if n < 1:
             raise Exception('Error', 'Number of intervals must be > 0')
         #if n > 500000:
@@ -48,10 +49,10 @@ def paramCheck(dialog, lofreq, hifreq, n_intervals):
 def checkLoHi(lofreq, hifreq):
     lof_s = lofreq.get()
     hif_s = hifreq.get()
-    low = float(eval(lof_s, {}, {}))
+    low = float(safe_eval(lof_s))
     if low < 0:
         raise Exception('Error', 'Low frequency must be >= 0')
-    hi = float(eval(hif_s, {}, {}))
+    hi = float(safe_eval(hif_s))
     if hi <= 0:
         raise Exception('Error', 'High frequency must be > 0')
     if hi <= low:

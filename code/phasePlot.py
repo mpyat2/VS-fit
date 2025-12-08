@@ -1,5 +1,6 @@
 from tkinter import Toplevel, Frame, Label, Entry, Button, StringVar, messagebox
 import numpy as np
+from utils import safe_eval
 
 param_period = None
 param_epoch = None
@@ -19,10 +20,10 @@ def phaseParamApply(phaseDialog, period, epoch, plotWindow, input_data, fit_resu
     period_v = 0.0
     epoch_v = 0.0
     try:
-        period_v = float(eval(period_s, {}, {}))
+        period_v = float(safe_eval(period_s))
         if period_v <= 0:
             raise Exception('Error', 'Period must be > 0')
-        epoch_v = float(eval(epoch_s, {}, {}))
+        epoch_v = float(safe_eval(epoch_s))
         
         if plotWindow is not None:
             plotWindow.show(None)

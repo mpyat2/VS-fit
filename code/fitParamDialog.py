@@ -1,4 +1,6 @@
 from tkinter import Toplevel, Frame, Label, Entry, Button, Checkbutton, StringVar, IntVar, messagebox
+import numpy as np
+from utils import safe_eval
 
 # Max number of periods to fit
 MAX_PERIODS = 9
@@ -38,16 +40,16 @@ def paramCheck(dialog,
     n_of_periods = len(strVarPeriods)
     
     try:
-        aD = int(eval(strVarAlgDeg.get().strip() or "0", {}, {}))
+        aD = int(safe_eval(strVarAlgDeg.get().strip() or "0"))
         if aD < 0:
             raise Exception('Error', 'Algebraic polynomial degree must be >= 0')
         param_algDegree = aD
             
         for i in range(n_of_periods):
-            tD = int(eval(strVarDegrees[i].get().strip() or "0", {}, {}))
+            tD = int(safe_eval(strVarDegrees[i].get().strip() or "0"))
             if tD < 0 or tD > 20:
                 raise Exception('Error', f'Trigonometric polynomial {i+1} degree must be between 0 and 20')
-            tP = float(eval(strVarPeriods[i].get().strip() or "0", {}, {}))
+            tP = float(safe_eval(strVarPeriods[i].get().strip() or "0"))
             if tP < 0:
                 raise Exception('Error', f'Trigonometric polynomial {i+1} period must be >= 0')
             tO = optFlags[i].get()

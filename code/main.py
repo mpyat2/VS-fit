@@ -15,6 +15,7 @@ import dftParamDialog
 import fit
 import fitParamDialog
 import phasePlot
+from utils import open_pdf, open_folder
 
 log_window = None
 
@@ -367,9 +368,20 @@ def doDetrend(master):
 
 def doOpenHelp():
     try:
-        webbrowser.open("https://github.com/mpyat2/VS-fit/blob/main/doc/GettingStarted.pdf")
+        #webbrowser.open("https://github.com/mpyat2/VS-fit/blob/main/doc/GettingStarted.pdf")
+        here = os.path.dirname(os.path.abspath(__file__))
+        pdf_path = os.path.abspath(os.path.join(here, "..", "doc", "GettingStarted.pdf"))
+        open_pdf(pdf_path)
     except Exception as e:
         messagebox.showerror("Error", f"Could not open help page:\n{e}")
+
+def doOpenDocFolder():
+    try:
+        here = os.path.dirname(os.path.abspath(__file__))
+        doc_path = os.path.abspath(os.path.join(here, "..", "doc"))
+        open_folder(doc_path)
+    except Exception as e:
+        messagebox.showerror("Error", f"Could not open documentation folder:\n{e}")
 
 # Ensure the 'root' at the top
 def bring_to_front(root):
@@ -422,6 +434,7 @@ def main():
     helpmenu = Menu(menu, tearoff=False)
     menu.add_cascade(label='Help', menu=helpmenu)
     helpmenu.add_command(label='Getting started', command=lambda: doOpenHelp())
+    helpmenu.add_command(label='Documentation', command=lambda: doOpenDocFolder())
     helpmenu.add_separator()
     helpmenu.add_command(label='About...', 
                          command=lambda: messagebox.showinfo(

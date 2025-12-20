@@ -119,7 +119,7 @@ def doOpenFile(master):
     global input_data
     global dft_result
     global fit_result
-    fileName = filedialog.askopenfilename(parent=master, filetypes=[('Data Files (*.dat *.txt *.csv *.tsv)', '*.dat *.txt *.csv *.tsv')])
+    fileName = filedialog.askopenfilename(parent=master, filetypes=[('Data Files (*.dat *.txt *.tsv)', '*.dat *.txt *.tsv')])
     if fileName:
         try:
             global plotWind0

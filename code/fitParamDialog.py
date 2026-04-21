@@ -4,6 +4,7 @@ from utils import safe_eval
 
 # Max number of periods to fit
 MAX_PERIODS = 9
+MAX_HARMONICS = 200
 
 param_defined = False
 param_algDegree = 0
@@ -44,11 +45,11 @@ def paramCheck(dialog,
         if aD < 0:
             raise Exception('Error', 'Algebraic polynomial degree must be >= 0')
         param_algDegree = aD
-            
+        
         for i in range(n_of_periods):
             tD = int(safe_eval(strVarDegrees[i].get().strip() or "0"))
-            if tD < 0 or tD > 20:
-                raise Exception('Error', f'Trigonometric polynomial {i+1} degree must be between 0 and 20')
+            if tD < 0 or tD > MAX_HARMONICS:
+                raise Exception('Error', f'Trigonometric polynomial {i+1} degree must be between 0 and {MAX_HARMONICS}')
             tP = float(safe_eval(strVarPeriods[i].get().strip() or "0"))
             if tP < 0:
                 raise Exception('Error', f'Trigonometric polynomial {i+1} period must be >= 0')

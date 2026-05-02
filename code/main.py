@@ -1,3 +1,5 @@
+VERSION_STR = '0.0.10-ls'
+
 import os
 import sys
 import webbrowser
@@ -91,16 +93,13 @@ def plotData(master):
         plotWind0 =  plotWind.PlotWindow(master, title="Input Data")
     plotWind0.show(plot_input)
 
-def plotDftResult(master, plot_power, plot_frequency):
+def plotDftResult(master, plot_frequency):
     def plot_dft(ax):
         global dft_result
         x_label = 'Period'
-        y_label = 'Semi-amplitude'
         x_col = 'per'
-        y_col = 'amp'
-        if plot_power:
-            y_col = 'pow'
-            y_label = 'Power'
+        y_col = 'pow'
+        y_label = 'Power'
         if plot_frequency:
             x_col = 'freq'
             x_label = 'Frequency'
@@ -187,12 +186,12 @@ def doPlotFolded(master):
         plotWind0 = plotWind.PlotWindow(master, title="Input Data")
     phasePlot.plotFolded(master, plotWind0, input_data, fit_result)
 
-def doPlotDftResult(master, plot_power, plot_frequency):
+def doPlotDftResult(master, plot_frequency):
     if checkBackgroundTaskRunning(master): return
     if dft_result is None:
         messagebox.showinfo("DC DFT", "No DC DFT result", parent=master)
         return;
-    plotDftResult(master, plot_power, plot_frequency)
+    plotDftResult(master, plot_frequency)
 
 def dft_callback(master, result, msg, action):
     # thread-safe callback
@@ -219,7 +218,7 @@ def dft_callback(master, result, msg, action):
         msg = "Unknown error"
     add_to_log(master, msg)
     if dft_result is not None:
-        plotDftResult(master, True, True)
+        plotDftResult(master, True)
     else:
         messagebox.showinfo("DC DFT", msg, parent=master)
     
@@ -418,10 +417,8 @@ def main():
     viewmenuInput.add_command(label='Phase', command=lambda: doPlotFolded(root))
     viewmenuResult = Menu(menu, tearoff=False)
     viewmenu.add_cascade(label='Plot DFT Result', menu=viewmenuResult)
-    viewmenuResult.add_command(label='Power(Frequency)', command=lambda: doPlotDftResult(root, True, True))
-    viewmenuResult.add_command(label='Semi-amplitude(Frequency)', command=lambda: doPlotDftResult(root, False, True))
-    viewmenuResult.add_command(label='Power(Period)', command=lambda: doPlotDftResult(root, True, False))
-    viewmenuResult.add_command(label='Semi-amplitude(Period)', command=lambda: doPlotDftResult(root, False, False))
+    viewmenuResult.add_command(label='Power vs Frequency', command=lambda: doPlotDftResult(root, True))
+    viewmenuResult.add_command(label='Power vs Period', command=lambda: doPlotDftResult(root, False))
     viewmenu.add_separator()
     viewmenu.add_command(label='Clear log', command=lambda: clear_log(root))
 
@@ -439,7 +436,7 @@ def main():
     helpmenu.add_command(label='About...', 
                          command=lambda: messagebox.showinfo(
                              "About V*-fit",
-                             "Light Curve fitting program by Maksym Yu. Pyatnytskyy\n\nhttps://github.com/mpyat2/VS-fit",
+                             f"Light Curve fitting program by Maksym Yu. Pyatnytskyy\n\nVersion {VERSION_STR}\n\nhttps://github.com/mpyat2/VS-fit",
                              parent=root))
 
     try:

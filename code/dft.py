@@ -3,59 +3,36 @@ import queue
 import time as pytime
 import numpy as np
 import pandas as pd
+from astropy.timeseries import LombScargle
 
 stop_flag = {"stop": False, "running": False, "time": 0.0}   # mutable for safe thread sharing
 result_queue = queue.Queue()  # worker → main communication
 
-# Translated from R (Rprogs.r) (with a tiny fix)
-# See https://www.aavso.org/software-directory, https://www.aavso.org/sites/default/files/software/Rcodes.zip
-def dcdft(master, callback, time, mag, lowfreq, hifreq, n_intervals, mcv_mode=False):
-    ndata = len(time)
-    t_mean = np.mean(time)
-    mag_var = np.var(mag)
-    
-    t = time - t_mean
+def dcdft(master, callback, time, mag, lowfreq, hifreq, n_intervals, chunk_size=1000):
+    # AI-generated (Claude), with modifications
+    frequencies = np.linspace(lowfreq, hifreq, n_intervals + 1)
+    frequencies = frequencies[frequencies > 0]
 
-    freq = []
-    per = []
-    power = []
-    amp = []
-    
-    freq_step = (hifreq - lowfreq) / n_intervals
-    for i in range(n_intervals + 1):
+    ls = LombScargle(time, mag)
+
+    freq_chunks = []
+    power_chunks = []
+
+    for i in range(0, len(frequencies), chunk_size):
         if stop_flag["stop"]:
             return None
-        nu = lowfreq + i * freq_step
-        if nu <= 0:
-            continue
-        freq.append(nu)
-        per.append(1 / nu)
-        # Calculate cos and sin (c1 and s1) of the time-sequence for the trial frequency
-        a = 2 * np.pi * nu * t
-        c1 = np.cos(a)
-        s1 = np.sin(a)
-        # Design matrix
-        X = np.column_stack((np.ones_like(t), c1, s1))
-        # Least-squares solution
-        params, residuals, rank, s = np.linalg.lstsq(X, mag, rcond=None)
-        
-        # Extract coefficients
-        a0, a1, a2 = params
-        
-        amp.append(np.sqrt(a1**2 + a2**2))
-        power.append(np.var(X @ params))
-        if (i + 1) % 1000 == 0:
-            #print(f"{i + 1} of {n_intervals + 1} frequencies computed.")
-            callback(master, None, f"{i + 1} of {n_intervals + 1} frequencies computed.", "progress")
-        
-    #print(f"Finished: {n_intervals + 1} frequencies computed.")
-    
-    if mcv_mode:
-        power = np.array(power) / mag_var
-    else:
-        power = np.array(power) * (ndata - 1) / mag_var / 2
-        
-    dcd = pd.DataFrame({'freq': freq, 'per': per, 'amp': amp, 'pow': power})
+
+        chunk_freqs = frequencies[i:i + chunk_size]
+        power_chunks.append(ls.power(chunk_freqs))
+        freq_chunks.append(chunk_freqs)
+
+        done = min(i + chunk_size, len(frequencies))
+        callback(master, None, f"{done} of {len(frequencies)} frequencies computed.", "progress")
+
+    all_freq = np.concatenate(freq_chunks)
+    all_power = np.concatenate(power_chunks)
+
+    dcd = pd.DataFrame({'freq': all_freq, 'per': 1.0 / all_freq, 'pow': all_power,})
     return dcd
 
 def worker(master, callback, time, mag, lowfreq, hifreq, n_intervals):

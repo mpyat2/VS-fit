@@ -9,11 +9,14 @@ stop_flag = {"stop": False, "running": False, "time": 0.0}   # mutable for safe 
 result_queue = queue.Queue()  # worker → main communication
 
 def dcdft(master, callback, time, mag, lowfreq, hifreq, n_intervals, n_terms, chunk_size=1000):
-    # AI-generated (Claude), with modifications
+    # time normalization to improve numerical stability of LombScargle
+    t_span    = time.max() - time.min()
+
     frequencies = np.linspace(lowfreq, hifreq, n_intervals + 1)
     frequencies = frequencies[frequencies > 0]
+    frequencies = frequencies * t_span  # rescale frequencies to normalized time units for LombScargle
 
-    ls = LombScargle(time - time.min(), mag, nterms=n_terms)
+    ls = LombScargle((time - time.min()) / t_span, mag, nterms=n_terms)
 
     freq_chunks = []
     power_chunks = []
@@ -29,7 +32,7 @@ def dcdft(master, callback, time, mag, lowfreq, hifreq, n_intervals, n_terms, ch
         done = min(i + chunk_size, len(frequencies))
         callback(master, None, f"{done} of {len(frequencies)} frequencies computed.", "progress")
 
-    all_freq = np.concatenate(freq_chunks)
+    all_freq = np.concatenate(freq_chunks) / t_span  # rescale frequencies back to original units
     all_power = np.concatenate(power_chunks)
 
     dcd = pd.DataFrame({'freq': all_freq, 'per': 1.0 / all_freq, 'pow': all_power,})

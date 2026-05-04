@@ -106,7 +106,7 @@ def plotDftResult(master, plot_frequency):
         ax.plot(dft_result[x_col], dft_result[y_col], color = 'k', linestyle='-')
         ax.set_xlabel(x_label)
         ax.set_ylabel(y_label)
-        ax.set_title('DC DFT')
+        ax.set_title('Periodogram')
         ax.grid(True, linestyle='--', color='gray', alpha=0.3)
     global plotWind1
     if plotWind1 is None: 
@@ -142,7 +142,7 @@ def doSaveDftResult(master):
     if checkBackgroundTaskRunning(master): return
     global dft_result
     if dft_result is None:
-        messagebox.showinfo("DC DFT", "No resulted data", parent=master)
+        messagebox.showinfo("Periodogram", "No resulted data", parent=master)
         return;
     fileName = filedialog.asksaveasfilename(parent=master, filetypes=[('Tab-separated Files (*.tsv)', '*.tsv')])
     if fileName:
@@ -189,7 +189,7 @@ def doPlotFolded(master):
 def doPlotDftResult(master, plot_frequency):
     if checkBackgroundTaskRunning(master): return
     if dft_result is None:
-        messagebox.showinfo("DC DFT", "No DC DFT result", parent=master)
+        messagebox.showinfo("Periodogram", "No result", parent=master)
         return;
     plotDftResult(master, plot_frequency)
 
@@ -220,7 +220,7 @@ def dft_callback(master, result, msg, action):
     if dft_result is not None:
         plotDftResult(master, True)
     else:
-        messagebox.showinfo("DC DFT", msg, parent=master)
+        messagebox.showinfo("Periodogram", msg, parent=master)
     
 def doDCDFT(master):
     if checkBackgroundTaskRunning(master): return
@@ -228,7 +228,7 @@ def doDCDFT(master):
     global dft_result
 
     if input_data is None:
-        messagebox.showinfo("DC DFT", "No data file open", parent=master)
+        messagebox.showinfo("Periodogram", "No data file open", parent=master)
         return
         
     t = input_data['Time'].to_numpy()
@@ -242,9 +242,9 @@ def doDCDFT(master):
         plotWind1.show(None)        
     dft_result = None
     add_to_log(master, "")
-    add_to_log(master, "DC DFT started.")
+    add_to_log(master, "Periodogram started.")
     # Background task
-    dft.dcdft_async(master, dft_callback, t, m, dftParamDialog.param_lofreq, dftParamDialog.param_hifreq, dftParamDialog.param_n_intervals)
+    dft.dcdft_async(master, dft_callback, t, m, dftParamDialog.param_lofreq, dftParamDialog.param_hifreq, dftParamDialog.param_n_intervals, dftParamDialog.param_n_terms)
 
 def fit_callback(master, result, msg, action):
     # thread-safe callback
@@ -404,7 +404,7 @@ def main():
     filemenu.add_command(label='Open Data File...', command=lambda: doOpenFile(root))
     saveresult = Menu(menu, tearoff=False)
     filemenu.add_cascade(label='Save Result...', menu=saveresult)
-    saveresult.add_command(label='DCDFT Result...', command=lambda: doSaveDftResult(root))
+    saveresult.add_command(label='Periodogram...', command=lambda: doSaveDftResult(root))
     saveresult.add_command(label='Fit Result...', command=lambda: doSaveFitResult(root))
     filemenu.add_separator()
     filemenu.add_command(label='Exit', command=lambda: doShutdown(root))
@@ -416,7 +416,7 @@ def main():
     viewmenuInput.add_command(label='Raw', command=lambda: doPlotData(root))
     viewmenuInput.add_command(label='Phase', command=lambda: doPlotFolded(root))
     viewmenuResult = Menu(menu, tearoff=False)
-    viewmenu.add_cascade(label='Plot DFT Result', menu=viewmenuResult)
+    viewmenu.add_cascade(label='Plot Periodogram', menu=viewmenuResult)
     viewmenuResult.add_command(label='Power vs Frequency', command=lambda: doPlotDftResult(root, True))
     viewmenuResult.add_command(label='Power vs Period', command=lambda: doPlotDftResult(root, False))
     viewmenu.add_separator()
@@ -424,7 +424,7 @@ def main():
 
     operationmenu = Menu(menu, tearoff=False)
     menu.add_cascade(label='Operations', menu=operationmenu)
-    operationmenu.add_command(label='DC DFT (Ferraz-Mello)...', command=lambda: doDCDFT(root))
+    operationmenu.add_command(label='Periodogram...', command=lambda: doDCDFT(root))
     operationmenu.add_command(label='Polynomial Fit...', command=lambda: doPolyFit(root))
     operationmenu.add_command(label='Detrend', command=lambda: doDetrend(root))
 

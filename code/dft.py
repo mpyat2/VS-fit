@@ -8,12 +8,12 @@ from astropy.timeseries import LombScargle
 stop_flag = {"stop": False, "running": False, "time": 0.0}   # mutable for safe thread sharing
 result_queue = queue.Queue()  # worker → main communication
 
-def dcdft(master, callback, time, mag, lowfreq, hifreq, n_intervals, chunk_size=1000):
+def dcdft(master, callback, time, mag, lowfreq, hifreq, n_intervals, n_terms, chunk_size=1000):
     # AI-generated (Claude), with modifications
     frequencies = np.linspace(lowfreq, hifreq, n_intervals + 1)
     frequencies = frequencies[frequencies > 0]
 
-    ls = LombScargle(time, mag)
+    ls = LombScargle(time - time.min(), mag, nterms=n_terms)
 
     freq_chunks = []
     power_chunks = []
@@ -35,7 +35,7 @@ def dcdft(master, callback, time, mag, lowfreq, hifreq, n_intervals, chunk_size=
     dcd = pd.DataFrame({'freq': all_freq, 'per': 1.0 / all_freq, 'pow': all_power,})
     return dcd
 
-def worker(master, callback, time, mag, lowfreq, hifreq, n_intervals):
+def worker(master, callback, time, mag, lowfreq, hifreq, n_intervals, n_terms):
     try:
         result = dcdft(
             master=master,
@@ -45,6 +45,7 @@ def worker(master, callback, time, mag, lowfreq, hifreq, n_intervals):
             lowfreq=lowfreq,
             hifreq=hifreq,
             n_intervals=n_intervals,
+            n_terms=n_terms
         )
         dcdft_result = {"data": result, "error": None}
     except Exception as e:
@@ -67,19 +68,19 @@ def check_worker_result(master, callback):
         if dcdft_result["error"] is not None:
             callback(master, None, "Error: " + dcdft_result["error"], "error")
         else:
-            callback(master, None, "DC DFT was stopped.", "stopped")
+            callback(master, None, "DFT was stopped.", "stopped")
     else:
-        msg = f"DC DFT calculation time {(pytime.time() - stop_flag['time']):.2f} s"
+        msg = f"DFT calculation time {(pytime.time() - stop_flag['time']):.2f} s"
         callback(master, dcdft_result["data"], msg, "finished")
 
 def stop_task():
     stop_flag["stop"] = True
 
-def dcdft_async(master, callback, time, mag, lofreq, hifreq, n_intervals):
+def dcdft_async(master, callback, time, mag, lofreq, hifreq, n_intervals, n_terms):
     stop_flag["stop"] = False  # reset stop flag
     threading.Thread(
         target=worker,
-        args=(master, callback, time, mag, lofreq, hifreq, n_intervals),
+        args=(master, callback, time, mag, lofreq, hifreq, n_intervals, n_terms),
         daemon=True
     ).start()
     stop_flag["time"] = pytime.time()    

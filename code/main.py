@@ -4,7 +4,7 @@ import os
 import sys
 import webbrowser
 import threading
-from tkinter import Tk, Frame, Label, Menu, Button, PhotoImage, filedialog, messagebox
+from tkinter import Tk, Frame, Label, Menu, Button, PhotoImage, BooleanVar, filedialog, messagebox
 from log_window import LogWindow
 ##
 import matplotlib
@@ -27,6 +27,8 @@ plotWind1 = None # DFT result
 input_data = None
 dft_result = None
 fit_result = None
+
+data_y_inverted = None # BooleanVar for Y axis inversion in data plot: True if magnitude, False if flux. Initialized in main().
 
 def clear_log(master):
     try:
@@ -80,11 +82,14 @@ def plotData(master):
         #ax.set_ylim(max(input_data["Mag"]), min(input_data["Mag"]))
         #ax.set_title('Input')
         ax.set_xlabel('Time')
-        ax.set_ylabel('Magnitude')
         ax.grid(True, linestyle='--', color='gray', alpha=0.3)
         if fit_result is not None:
             ax.plot(fit_result['Time'], fit_result['Fit'], 'k.', label='Approximation')
-        ax.invert_yaxis()
+        if isinstance(data_y_inverted, BooleanVar) and data_y_inverted.get():
+            ax.invert_yaxis()
+            ax.set_ylabel('Magnitude')
+        else:
+            ax.set_ylabel('Flux')
         # Make space for the legend, put it below the X axis
         ax.figure.subplots_adjust(bottom=0.15)
         ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.12), ncol=2)
@@ -147,7 +152,7 @@ def doSaveDftResult(master):
     fileName = filedialog.asksaveasfilename(parent=master, filetypes=[('Tab-separated Files (*.tsv)', '*.tsv')])
     if fileName:
         try:
-            dataio.save_result(fileName, dft_result)
+            dataio.save_result(fileName, dft_result[['freq', 'pow']])
         except Exception as e:
             messagebox.showinfo(None, "Error: " + str(e), parent=master)
             return
@@ -161,7 +166,7 @@ def doSaveFitResult(master):
     fileName = filedialog.asksaveasfilename(parent=master, filetypes=[('Tab-separated Files (*.tsv)', '*.tsv')])
     if fileName:
         try:
-            dataio.save_result(fileName, fit_result)
+            dataio.save_result(fileName, fit_result[['Time', 'Fit']])
         except Exception as e:
             messagebox.showinfo(None, "Error: " + str(e), parent=master)
             return
@@ -184,7 +189,7 @@ def doPlotFolded(master):
     global plotWind0
     if plotWind0 is None: 
         plotWind0 = plotWind.PlotWindow(master, title="Input Data")
-    phasePlot.plotFolded(master, plotWind0, input_data, fit_result)
+    phasePlot.plotFolded(master, plotWind0, input_data, fit_result, isinstance(data_y_inverted, BooleanVar) and data_y_inverted.get())
 
 def doPlotDftResult(master, plot_frequency):
     if checkBackgroundTaskRunning(master): return
@@ -388,6 +393,10 @@ def bring_to_front(root):
     root.attributes('-topmost', True)
     root.after(100, lambda: root.attributes('-topmost', False))
 
+def on_toggle_y(root):
+    if input_data is not None:
+        doPlotData(root)
+
 ##############################################################################
 
 def main():
@@ -396,6 +405,10 @@ def main():
     root = Tk()
     root.protocol("WM_DELETE_WINDOW", lambda: shutdown(root))
     root.title("V*-fit")
+
+    global data_y_inverted
+    data_y_inverted = BooleanVar(master=root, value=True)
+
     menu = Menu(root)
     root.config(menu=menu)
 
@@ -411,14 +424,13 @@ def main():
     
     viewmenu = Menu(menu, tearoff=False)
     menu.add_cascade(label='View', menu=viewmenu)
-    viewmenuInput = Menu(menu, tearoff=False)
-    viewmenu.add_cascade(label='Plot Input', menu=viewmenuInput)
-    viewmenuInput.add_command(label='Raw', command=lambda: doPlotData(root))
-    viewmenuInput.add_command(label='Phase', command=lambda: doPlotFolded(root))
-    viewmenuResult = Menu(menu, tearoff=False)
-    viewmenu.add_cascade(label='Plot Periodogram', menu=viewmenuResult)
-    viewmenuResult.add_command(label='Power vs Frequency', command=lambda: doPlotDftResult(root, True))
-    viewmenuResult.add_command(label='Power vs Period', command=lambda: doPlotDftResult(root, False))
+    viewmenu.add_command(label='Raw data', command=lambda: doPlotData(root))
+    viewmenu.add_command(label='Phase plot', command=lambda: doPlotFolded(root))
+    viewmenu.add_separator()
+    viewmenu.add_checkbutton(label='Y inverted', variable=data_y_inverted, command=lambda: on_toggle_y(root))
+    viewmenu.add_separator()
+    viewmenu.add_command(label='Periodogram Power vs Frequency', command=lambda: doPlotDftResult(root, True))
+    viewmenu.add_command(label='Periodogram Power vs Period', command=lambda: doPlotDftResult(root, False))
     viewmenu.add_separator()
     viewmenu.add_command(label='Clear log', command=lambda: clear_log(root))
 

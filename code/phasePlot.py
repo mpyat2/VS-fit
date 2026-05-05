@@ -9,7 +9,7 @@ def phaseDialogDestroy(dialog):
     #print("phaseDialogDestroy")
     dialog.destroy()
 
-def phaseParamApply(phaseDialog, period, epoch, plotWindow, input_data, fit_result):
+def phaseParamApply(phaseDialog, period, epoch, plotWindow, input_data, fit_result, y_inverted):
     global param_period
     global param_epoch
     param_period = None
@@ -47,11 +47,14 @@ def phaseParamApply(phaseDialog, period, epoch, plotWindow, input_data, fit_resu
             #ax.set_ylim(max(input_data['Mag']), min(input_data['Mag']))
             ax.set_title(f'Epoch {epoch_v}, Period {period_v}')
             ax.set_xlabel('Phase')
-            ax.set_ylabel('Magnitude')
             ax.grid(True, linestyle='--', color='gray', alpha=0.3)
             if fit_result is not None:
                 ax.plot(std_phase_fit2, m_fit2, 'k.', label='Approximation')
-            ax.invert_yaxis()
+            if y_inverted:
+                ax.invert_yaxis()
+                ax.set_ylabel('Magnitude')
+            else:
+                ax.set_ylabel('Flux')
             # Make space for the legend, put it below the X axis
             ax.figure.subplots_adjust(bottom=0.15)
             ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.12), ncol=2)
@@ -61,7 +64,7 @@ def phaseParamApply(phaseDialog, period, epoch, plotWindow, input_data, fit_resu
     except Exception as e:
         messagebox.showinfo(None, repr(e), parent=phaseDialog)
 
-def plotFolded(master, plotWindow, input_data, fit_result):
+def plotFolded(master, plotWindow, input_data, fit_result, y_inverted):
     x = master.winfo_x()
     y = master.winfo_y()
 
@@ -87,7 +90,7 @@ def plotFolded(master, plotWindow, input_data, fit_result):
     entry_epoch = Entry(frame, textvariable = epoch)
     entry_epoch.insert(0, str(param_epoch) if param_epoch is not None else "") 
     entry_epoch.grid(row=3, column=2)
-    buttonOK = Button(frame, text="Apply", command=lambda: phaseParamApply(phaseDialog, period, epoch, plotWindow, input_data, fit_result))
+    buttonOK = Button(frame, text="Apply", command=lambda: phaseParamApply(phaseDialog, period, epoch, plotWindow, input_data, fit_result, y_inverted))
     buttonOK.grid(row=5, column=1)
     buttonCancel = Button(frame, text="Close", command=lambda: phaseDialogDestroy(phaseDialog))
     buttonCancel.grid(row=5, column=2)

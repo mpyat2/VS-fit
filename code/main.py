@@ -1,4 +1,4 @@
-VERSION_STR = '0.0.10-ls'
+VERSION_STR = '0.0.10'
 
 import os
 import sys

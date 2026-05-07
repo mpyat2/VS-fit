@@ -425,7 +425,7 @@ def main():
     viewmenu = Menu(menu, tearoff=False)
     menu.add_cascade(label='View', menu=viewmenu)
     viewmenu.add_command(label='Raw data', command=lambda: doPlotData(root))
-    viewmenu.add_command(label='Phase plot', command=lambda: doPlotFolded(root))
+    viewmenu.add_command(label='Phase plot...', command=lambda: doPlotFolded(root))
     viewmenu.add_separator()
     viewmenu.add_checkbutton(label='Y inverted', variable=data_y_inverted, command=lambda: on_toggle_y(root))
     viewmenu.add_separator()

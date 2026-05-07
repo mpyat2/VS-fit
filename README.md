@@ -11,4 +11,6 @@ Python 3.8+
 
 Tested on Windows 7, 10, 11; Debian 13; Linux Mint
 
+[Getting started](doc/GettingStarted.pdf)
+
 ![Screenshot](doc/Screenshot001.png?raw=true)

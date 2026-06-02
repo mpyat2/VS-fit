@@ -162,9 +162,9 @@ def print_linear_coefficients_and_amplitudes(printLog, N, X, alg_poly,
         for j in range(len(initial_periods)):
             period = initial_periods[j]
             if j in best_period_indices:
-                period = best_periods[best_period_indices.index(j)]
+                period = best_periods[j]
             for d in range(degrees[j]):
-                period_infos.append(str(d + 1) + " * " + str(period))
+                period_infos.append("(1/" + str(d + 1) + ") * " + str(period))
         #print(period_infos)
         
         printLog("=== AMPLITUDES =================================================================")

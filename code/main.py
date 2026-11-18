@@ -1,8 +1,38 @@
-VERSION_STR = '0.0.12'
+VERSION_STR = '0.0.14'
+
+import tkinter as tk
+
+class _Splash:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.overrideredirect(True)          # No frame/title
+        self.root.attributes('-topmost', True)
+        frame = tk.Frame(self.root, bd=2, relief='ridge', padx=40, pady=20)
+        frame.pack()
+        tk.Label(frame, text='VS-fit', font=('Helvetica', 20, 'bold')).pack()
+        tk.Label(frame, text=f'version {VERSION_STR}').pack()
+        self.status = tk.Label(frame, text='Loading...', fg='gray')
+        self.status.pack(pady=(10, 0))
+        # Center
+        self.root.update_idletasks()
+        w, h = self.root.winfo_reqwidth(), self.root.winfo_reqheight()
+        x = (self.root.winfo_screenwidth() - w) // 2
+        y = (self.root.winfo_screenheight() - h) // 2
+        self.root.geometry(f'+{x}+{y}')
+        self.root.update()
+
+    def set(self, text):
+        self.status.config(text=text)
+        self.root.update()
+
+    def close(self):
+        self.root.destroy()
+
+_splash = _Splash()
 
 import os
 import sys
-import webbrowser
+#import webbrowser
 import threading
 from tkinter import Tk, Frame, Label, Menu, Button, PhotoImage, BooleanVar, filedialog, messagebox
 from log_window import LogWindow
@@ -18,6 +48,8 @@ import fit
 import fitParamDialog
 import phasePlot
 from utils import open_pdf, open_folder
+
+_splash.close()
 
 log_window = None
 

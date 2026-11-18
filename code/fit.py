@@ -116,7 +116,7 @@ def print_optimized_periods(printLog, best_periods, se_periods, period_indices):
     printLog("================================================================================")
     printLog()
     
-def print_linear_coefficients_and_amplitudes(printLog, N, X, alg_poly, 
+def print_linear_coefficients_and_amplitudes(printLog, timeZeroPoint, N, X, alg_poly, 
                                              initial_periods, degrees, 
                                              best_periods, best_period_indices, 
                                              coeffs, rss, sigma2, dof):
@@ -151,6 +151,10 @@ def print_linear_coefficients_and_amplitudes(printLog, N, X, alg_poly,
         n = (j - alg_poly - 1) // 2 + 1
         ampl_labels.append(f'Ampl_{n}')
     
+    printLog()
+    printLog("================================================================================")
+    printLog(f"timeZeroPoint = {timeZeroPoint}")
+    printLog("================================================================================")
     printLog()
     printLog("=== LINEAR COEFFICIENTS ========================================================")
     for lbl, c, se in zip(term_labels, coeffs, se_coeffs):
@@ -225,7 +229,7 @@ def optimize_periods_with_errors(master, callback,
             p = len(coeffs)
             dof = max(N - p, 1)
             sigma2 = rss / dof
-            print_linear_coefficients_and_amplitudes(printLog, N, X, alg_poly, initial_periods, degrees, [], [], coeffs, rss, sigma2, dof)
+            print_linear_coefficients_and_amplitudes(printLog, np.mean(time), N, X, alg_poly, initial_periods, degrees, [], [], coeffs, rss, sigma2, dof)
             fit_result = pd.DataFrame({
                 'Time': time,
                 'Mag': mag,
@@ -290,7 +294,7 @@ def optimize_periods_with_errors(master, callback,
         # Print results
         print_optimized_periods(printLog, best_periods, se_periods, period_indices)
 
-        print_linear_coefficients_and_amplitudes(printLog, N, X, alg_poly, initial_periods, degrees, best_periods, period_indices, coeffs, rss, sigma2, dof)
+        print_linear_coefficients_and_amplitudes(printLog, np.mean(time), N, X, alg_poly, initial_periods, degrees, best_periods, period_indices, coeffs, rss, sigma2, dof)
 
         fit_result = pd.DataFrame({
             'Time': time,

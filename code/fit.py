@@ -168,7 +168,7 @@ def print_linear_coefficients_and_amplitudes(printLog, timeZeroPoint, N, X, alg_
             if j in best_period_indices:
                 period = best_periods[j]
             for d in range(degrees[j]):
-                period_infos.append("(1/" + str(d + 1) + ") * " + str(period))
+                period_infos.append(f"(1/{d + 1}) * {period}")
         #print(period_infos)
         
         printLog("=== AMPLITUDES =================================================================")
@@ -177,6 +177,42 @@ def print_linear_coefficients_and_amplitudes(printLog, timeZeroPoint, N, X, alg_
             printLog(f"{lbl:12s}: {a:.8e} ± {se:.3e}  Period: {period_info}")
         printLog("================================================================================")            
         printLog()
+
+    printLog("=== FUNCTION =================================================================")
+    printLog("import numpy as np")
+    printLog()
+    printLog("def model(t):")
+    printLog(f"  tzp = {timeZeroPoint}")
+    lines = []
+    for j in range(alg_poly + 1):
+        coef = coeffs[j]
+        if j == 0:
+            term = ""
+        elif j == 1:
+            term = f" * (t-tzp)"
+        else:
+            term = f" * (t-tzp)**{j}"
+        lines.append(f"    {' + ' if coef >= 0.0 else ' - '}{abs(coef)}{term}")
+    i = alg_poly
+    for j in range(len(initial_periods)):
+        period = initial_periods[j]
+        if j in best_period_indices:
+            period = best_periods[j]
+        for d in range(degrees[j]):
+            i += 1
+            cos_coef = coeffs[i]
+            i += 1
+            sin_coef = coeffs[i]
+            arg = f"2*np.pi*{d+1}/{period}*(t-tzp)"
+            lines.append("    "
+                         f"{' + ' if cos_coef >= 0.0 else ' - '}{abs(cos_coef)} * np.cos({arg})"
+                         f"{' + ' if sin_coef >= 0.0 else ' - '}{abs(sin_coef)} * np.sin({arg})")
+    printLog("  a = \\")
+    printLog(" \\\n".join(lines))
+    printLog("  return a")
+    printLog("================================================================================")
+    printLog()
+
     n_panams = N - dof
     printLog(f"RSS [Sum(O-C)^2] = {rss:.6e}, sigma = {(sigma2**0.5):.6e}")
     printLog(f"Npoints = {N}, dof = {dof}, Nparams = {n_panams}")

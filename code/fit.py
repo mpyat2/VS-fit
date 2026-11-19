@@ -159,7 +159,7 @@ def print_linear_coefficients_and_amplitudes(printLog, timeZeroPoint, N, X, alg_
     printLog("=== LINEAR COEFFICIENTS ========================================================")
     for lbl, c, se in zip(term_labels, coeffs, se_coeffs):
         printLog(f"{lbl:12s}: {c:.8e} ± {se:.3e}")
-    printLog("================================================================================")                        
+    printLog("================================================================================")
     printLog()
     if len(initial_periods) > 0:
         period_infos = []
@@ -175,10 +175,10 @@ def print_linear_coefficients_and_amplitudes(printLog, timeZeroPoint, N, X, alg_
         for i, (lbl, a, se) in enumerate(zip(ampl_labels, amplitudes, se_amplitudes)):
             period_info = period_infos[i]
             printLog(f"{lbl:12s}: {a:.8e} ± {se:.3e}  Period: {period_info}")
-        printLog("================================================================================")            
+        printLog("================================================================================")
         printLog()
 
-    printLog("=== FUNCTION =================================================================")
+    printLog("=== FUNCTION ===================================================================")
     printLog("import numpy as np")
     printLog()
     printLog("def model(t):")
